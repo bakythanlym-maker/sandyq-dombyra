@@ -155,21 +155,21 @@
     </main>
 
     <script>
-        
-            lucide.createIcons();
+        lucide.createIcons();
 
         const HF_URL = "https://nurmaaq-sandyq-dombyra.hf.space"; 
         const fileInput = document.getElementById('file-field');
         const dropZone = document.getElementById('drop-zone');
         const statusBadge = document.getElementById('status-text');
         const line1 = document.getElementById('line-1');
+        const line2 = document.getElementById('line-2');
 
         // Файл таңдалғанда
         fileInput.addEventListener('change', (e) => {
             if (e.target.files[0]) processAudio(e.target.files[0]);
         });
 
-        // Drag & Drop
+        // Drag & Drop функциялары
         dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
         dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
         dropZone.addEventListener('drop', (e) => {
@@ -179,35 +179,37 @@
         });
 
         async function processAudio(file) {
-            statusBadge.innerHTML = "AI ТАЛДАУ ЖҮРІП ЖАТЫР...";
+            statusBadge.innerHTML = '<span style="width: 6px; height: 6px; background: #d4af37; border-radius: 50%;"></span> AI ТАЛДАУ ЖҮРІП ЖАТЫР...';
             
             const reader = new FileReader();
             reader.readAsDataURL(file);
             reader.onload = async () => {
                 try {
-                    const response = await fetch(`${HF_URL}/api/predict`, {
+                    const response = await fetch(`${HF_URL}/`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ data: [reader.result] })
+                        body: JSON.stringify({
+                            data: [reader.result]
+                        })
                     });
 
                     const result = await response.json();
+                    
                     if (result.data && result.data[0]) {
                         const notes = result.data[0];
-                        // Нотаны домбыра пернесіне айналдыру (0-19 перне)
-                        const tabs = notes.slice(0, 15).map(n => n.note % 12).join("--");
+                        // Домбыра пернелеріне айналдыру
+                        const tabs = notes.map(n => n.note % 12).join("--");
+                        
                         line1.innerText = tabs + "--";
-                        statusBadge.innerHTML = "ТАЛДАУ ДАЙЫН";
+                        line2.innerText = "0--0--0--0--0--0--";
+                        statusBadge.innerHTML = '<span style="width: 6px; height: 6px; background: #d4af37; border-radius: 50%;"></span> ТАЛДАУ ДАЙЫН';
                     }
                 } catch (err) {
-                    statusBadge.innerHTML = "ҚАТЕ ШЫҚТЫ";
-                    console.error(err);
+                    statusBadge.innerHTML = '<span style="width: 6px; height: 6px; background: #d4af37; border-radius: 50%;"></span> ҚАТЕ ШЫҚТЫ';
+                    console.error("Қате:", err);
                 }
             };
         }
-    </script>
-</body>
-</html>
     </script>
 </body>
 </html>
