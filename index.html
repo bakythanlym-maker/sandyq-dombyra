@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sandyq | Dombra AI</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+        :root {
+            --bg-gradient: linear-gradient(135deg, #fdfaf7 0%, #f5f0eb 50%, #e8e2d8 100%);
+            --sidebar-bg: rgba(255, 255, 255, 0.9);
+            --accent-brown: #8b5e3c;
+            --accent-gold: #d4af37;
+            --text-main: #2a2420;
+            --text-muted: #8c847f;
+            --border: rgba(240, 230, 223, 0.8);
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --card-shadow: 0 20px 40px rgba(139, 94, 60, 0.08);
+            --tab-bg: linear-gradient(145deg, #2a2420, #1f1a16);
+        }
+
+        * { box-sizing: border-box; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+
+        body {
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            color: var(--text-main);
+            overflow: hidden;
+        }
+
+        /* --- SIDEBAR --- */
+        aside {
+            width: 300px;
+            background: var(--sidebar-bg);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 40px 24px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 56px;
+            text-decoration: none;
+            color: var(--text-main);
+        }
+
+        .logo-text { font-weight: 800; font-size: 1.2rem; line-height: 1.1; }
+        .logo-text span { display: block; font-size: 0.7rem; letter-spacing: 3px; font-weight: 700; }
+
+        nav { flex: 1; }
+        .nav-item {
+            display: flex; align-items: center; gap: 16px; padding: 16px 20px;
+            text-decoration: none; color: var(--text-muted); font-weight: 600;
+            border-radius: 16px; margin-bottom: 8px;
+        }
+        .nav-item.active { background: #f8eee7; color: var(--accent-brown); box-shadow: inset 4px 0 0 var(--accent-brown); }
+
+        /* --- MAIN AREA --- */
+        main { flex: 1; padding: 56px; overflow-y: auto; position: relative; }
+
+        .card {
+            background: var(--glass-bg); backdrop-filter: blur(15px);
+            border-radius: 30px; padding: 40px; border: 1px solid white;
+            box-shadow: var(--card-shadow); margin-bottom: 32px;
+        }
+
+        .input-box {
+            display: flex; gap: 16px; background: white; border: 1px solid var(--border);
+            padding: 12px 12px 12px 24px; border-radius: 20px; align-items: center;
+        }
+        .input-box input { flex: 1; border: none; outline: none; font-size: 1rem; }
+
+        .btn-main {
+            background: var(--accent-brown); color: white; border: none;
+            padding: 14px 32px; border-radius: 14px; font-weight: 700; cursor: pointer;
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--border); border-radius: 24px; padding: 48px;
+            text-align: center; background: rgba(255, 255, 255, 0.3); cursor: pointer;
+        }
+        .upload-zone.dragover { border-color: var(--accent-brown); background: rgba(139, 94, 60, 0.05); }
+
+        /* --- TAB VIEWER --- */
+        .tab-viewer {
+            background: var(--tab-bg); border-radius: 28px; padding: 48px;
+            color: #f8eee7; font-family: 'JetBrains Mono', monospace;
+        }
+
+        .tab-line { font-size: 2rem; letter-spacing: 8px; margin: 20px 0; min-height: 40px; }
+
+        .status-badge {
+            display: inline-flex; align-items: center; gap: 10px;
+            background: rgba(212, 175, 55, 0.1); padding: 8px 18px;
+            border-radius: 100px; font-size: 0.8rem; font-weight: 700; color: var(--accent-gold);
+            margin-bottom: 24px; border: 1px solid rgba(212, 175, 55, 0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <aside>
+        <div class="logo-container">
+            <div class="logo-text"><span>SANDYQ</span>DOMBRA AI</div>
+        </div>
+        <nav>
+            <a href="#" class="nav-item active"><i data-lucide="upload"></i> Жүктеу</a>
+            <a href="#" class="nav-item"><i data-lucide="heart"></i> Таңдаулылар</a>
+        </nav>
+    </aside>
+
+    <main>
+        <h1>Сандық нотаға айналдыру</h1>
+
+        <div class="card">
+            <div class="input-box">
+                <i data-lucide="link-2" style="color: var(--text-muted)"></i>
+                <input type="text" placeholder="YouTube сілтемесін қойыңыз...">
+                <button class="btn-main">Талдау</button>
+            </div>
+            <div style="text-align: center; margin: 20px 0; font-weight: 800; color: var(--text-muted); font-size: 0.7rem; letter-spacing: 2px;">НЕМЕСЕ</div>
+            <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-field').click()">
+                <input type="file" id="file-field" style="display: none" accept="audio/*">
+                <i data-lucide="file-audio" style="width: 40px; height: 40px; color: var(--accent-brown); margin-bottom: 16px;"></i>
+                <h3>Файлды осы жерге тастаңыз</h3>
+                <p>немесе компьютерден таңдаңыз</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="tab-viewer">
+                <div class="status-badge" id="status-text">
+                    <span style="width: 6px; height: 6px; background: var(--accent-gold); border-radius: 50%;"></span>
+                    ФАЙЛ КҮТІЛУДЕ
+                </div>
+                <div style="font-size: 0.75rem; color: rgba(255,255,255,0.4); letter-spacing: 2px;">G - ҮСТІҢГІ ІШЕК</div>
+                <div class="tab-line" id="line-1">-- -- -- -- -- --</div>
+                <div style="height: 1px; background: rgba(255,255,255,0.1); margin: 20px 0;"></div>
+                <div style="font-size: 0.75rem; color: rgba(255,255,255,0.4); letter-spacing: 2px;">D - АСТЫҢҒЫ ІШЕК</div>
+                <div class="tab-line" id="line-2">-- -- -- -- -- --</div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        lucide.createIcons();
+
+        const HF_URL = "https://nurmaaq-sandyq-dombyra.hf.space"; 
+        const fileInput = document.getElementById('file-field');
+        const dropZone = document.getElementById('drop-zone');
+        const statusBadge = document.getElementById('status-text');
+        const line1 = document.getElementById('line-1');
+
+        // Файл таңдалғанда
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) processAudio(e.target.files[0]);
+        });
+
+        // Drag & Drop
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files[0]) processAudio(e.dataTransfer.files[0]);
+        });
+
+        async function processAudio(file) {
+            statusBadge.innerHTML = "AI ТАЛДАУ ЖҮРІП ЖАТЫР...";
+            
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = async () => {
+                try {
+                    const response = await fetch(`${HF_URL}/api/predict`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ data: [reader.result] })
+                    });
+
+                    const result = await response.json();
+                    if (result.data && result.data[0]) {
+                        const notes = result.data[0];
+                        // Нотаны домбыра пернесіне айналдыру (0-19 перне)
+                        const tabs = notes.slice(0, 15).map(n => n.note % 12).join("--");
+                        line1.innerText = tabs + "--";
+                        statusBadge.innerHTML = "ТАЛДАУ ДАЙЫН";
+                    }
+                } catch (err) {
+                    statusBadge.innerHTML = "ҚАТЕ ШЫҚТЫ";
+                    console.error(err);
+                }
+            };
+        }
+    </script>
+</body>
+</html>
