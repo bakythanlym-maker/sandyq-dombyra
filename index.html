@@ -155,36 +155,59 @@
     </main>
 
     <script>
-        async function processAudio(file) {
-    statusBadge.innerHTML = "AI ТАЛДАУ ЖҮРІП ЖАТЫР...";
-    
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = async () => {
-        try {
-            // URL мекенжайынан /api/ сөзін алып тастап, тікелей шақыру
-            const response = await fetch("https://nurmaaq-sandyq-dombyra.hf.space/run/predict", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    data: [reader.result]
-                })
-            });
+        
+            lucide.createIcons();
 
-            const result = await response.json();
-            if (result.data && result.data[0]) {
-                const notes = result.data[0];
-                const tabs = notes.slice(0, 15).map(n => n.note % 12).join("--");
-                
-                document.getElementById('line-1').innerText = tabs + "--";
-                statusBadge.innerHTML = "ТАЛДАУ ДАЙЫН";
-            }
-        } catch (err) {
-            console.error("Қате:", err);
-            statusBadge.innerHTML = "ҚАТЕ ШЫҚТЫ";
+        const HF_URL = "https://nurmaaq-sandyq-dombyra.hf.space"; 
+        const fileInput = document.getElementById('file-field');
+        const dropZone = document.getElementById('drop-zone');
+        const statusBadge = document.getElementById('status-text');
+        const line1 = document.getElementById('line-1');
+
+        // Файл таңдалғанда
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) processAudio(e.target.files[0]);
+        });
+
+        // Drag & Drop
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files[0]) processAudio(e.dataTransfer.files[0]);
+        });
+
+        async function processAudio(file) {
+            statusBadge.innerHTML = "AI ТАЛДАУ ЖҮРІП ЖАТЫР...";
+            
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = async () => {
+                try {
+                    const response = await fetch(`${HF_URL}/api/predict`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ data: [reader.result] })
+                    });
+
+                    const result = await response.json();
+                    if (result.data && result.data[0]) {
+                        const notes = result.data[0];
+                        // Нотаны домбыра пернесіне айналдыру (0-19 перне)
+                        const tabs = notes.slice(0, 15).map(n => n.note % 12).join("--");
+                        line1.innerText = tabs + "--";
+                        statusBadge.innerHTML = "ТАЛДАУ ДАЙЫН";
+                    }
+                } catch (err) {
+                    statusBadge.innerHTML = "ҚАТЕ ШЫҚТЫ";
+                    console.error(err);
+                }
+            };
         }
-    };
-}
+    </script>
+</body>
+</html>
     </script>
 </body>
 </html>
