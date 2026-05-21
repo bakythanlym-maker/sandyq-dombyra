@@ -1349,49 +1349,7 @@
                     )}
 
                     {/* Public Access / ngrok helper */}
-                    <div style={{marginTop:40,paddingTop:20,borderTop:'1px solid rgba(255,255,255,0.05)',textAlign:'center'}}>
-                        <p style={{color:'#596f5c',fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:12}}>
-                            Қашықтан қосылу (ngrok / tunnel)
-                        </p>
-                        <div style={{display:'flex',justifyContent:'center',gap:8,maxWidth:500,margin:'0 auto'}}>
-                            <input 
-                                type="text" 
-                                placeholder="https://your-space.hf.space"
-                                value={backendUrlOverride}
-                                onChange={(e) => updateBackendUrl(e.target.value)}
-                                style={{
-                                    flex:1,
-                                    background:'#070B09',
-                                    border:'1px solid #1F2937',
-                                    borderRadius:8,
-                                    padding:'8px 12px',
-                                    color:'#FFFFFF',
-                                    fontSize:12,
-                                    fontFamily:'monospace'
-                                }}
-                            />
-                            {backendUrlOverride && (
-                                <button 
-                                    onClick={() => updateBackendUrl('')}
-                                    style={{
-                                        background:'rgba(239, 68, 68, 0.1)',
-                                        color:'#EF4444',
-                                        border:'1px solid rgba(239, 68, 68, 0.2)',
-                                        borderRadius:8,
-                                        padding:'0 12px',
-                                        fontSize:11,
-                                        fontWeight:800,
-                                        cursor:'pointer'
-                                    }}
-                                >
-                                    ӨШІРУ
-                                </button>
-                            )}
-                        </div>
-                        <p style={{color:'#4B5563',fontSize:10,marginTop:8,fontWeight:600}}>
-                            Бос қалдырсаңыз, әдепкі бойынша localhost (127.0.0.1:8000) қолданылады.
-                        </p>
-                    </div>
+                    
 
                 </div>
             );
