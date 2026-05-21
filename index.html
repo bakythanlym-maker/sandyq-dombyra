@@ -775,20 +775,11 @@
                         y = 20;
                     }
                     
-                    const names = notesInChunk.map(n => {
-                        return n.octave_shift && n.octave_shift !== 0
-                            ? ` (${n.s}${n.f}, окт.${n.octave_shift > 0 ? '+' : ''}${n.octave_shift})`
-                            : ` (${n.s}${n.f})`;
-                    }).join('  ');
                     doc.text(`[${chunkStart.toFixed(1)}s - ${chunkEnd.toFixed(1)}s]`, 15, y);
                     y += 6;
                     doc.text(`G |-${lineG.join('')}-|`, 15, y);
                     y += 6;
                     doc.text(`D |-${lineD.join('')}-|`, 15, y);
-                    y += 5;
-                    doc.setFontSize(9);
-                    doc.text(names.length > 95 ? names.slice(0, 92) + '...' : names, 15, y);
-                    doc.setFontSize(11);
                     y += 12;
                 }
                 
