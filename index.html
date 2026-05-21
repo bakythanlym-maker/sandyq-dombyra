@@ -620,10 +620,6 @@
     <script type="text/babel">
         const { useState, useRef, useEffect } = React;
         const getBackendBaseUrl = () => {
-            // Check for manual override in localStorage (useful for ngrok/tunnels)
-            const override = localStorage.getItem('BACKEND_URL_OVERRIDE');
-            if (override) return override;
-
             // Permanent Hugging Face backend URL
             return 'https://nurmaaq-my-sandyq-dombyra.hf.space';
         };
@@ -671,17 +667,6 @@
             useEffect(() => { sequenceRef.current = sequence; }, [sequence]);
 
             const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
-            const [backendUrlOverride, setBackendUrlOverride] = useState(localStorage.getItem('BACKEND_URL_OVERRIDE') || '');
-            
-            const updateBackendUrl = (url) => {
-                const cleaned = url.trim().replace(/\/$/, '');
-                setBackendUrlOverride(cleaned);
-                if (cleaned) {
-                    localStorage.setItem('BACKEND_URL_OVERRIDE', cleaned);
-                } else {
-                    localStorage.removeItem('BACKEND_URL_OVERRIDE');
-                }
-            };
             
             const changeSpeed = (speed) => {
                 setPlaybackSpeed(speed);
@@ -1347,9 +1332,6 @@
                             </div>
                         </div>
                     )}
-
-                    {/* Public Access / ngrok helper */}
-                    
 
                 </div>
             );
