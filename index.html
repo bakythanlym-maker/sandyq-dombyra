@@ -11,6 +11,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@700;800&display=swap" rel="stylesheet">
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
+        html, body {
+            width: 100%;
+            height: 100%;
+        }
         body{
             font-family:'Outfit', sans-serif;
             background: #b5d5a8;
@@ -19,10 +23,7 @@
             overflow-x:hidden;
             font-weight: 500;
             -webkit-font-smoothing: antialiased;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
+            -webkit-touch-callout: none;
         }
         ::-webkit-scrollbar{width:6px;height:6px}
         ::-webkit-scrollbar-track{background:transparent}
@@ -31,100 +32,226 @@
 
         .main-wrapper {
             width: 100%;
-            max-width: 1100px;
+            max-width: 1200px;
             background: #0c0c0c;
-            border-radius: 40px;
-            padding: 32px;
-            padding-left: 100px; /* Space for sidebar */
+            border-radius: 0;
+            padding: 20px;
+            padding-bottom: 80px; /* Space for bottom nav */
             box-shadow: 0 40px 100px rgba(0,0,0,0.4);
             position: relative;
-            overflow: hidden;
-            min-height: 800px;
+            overflow: visible;
+            min-height: 100vh;
+            margin: 0 auto;
+        }
+
+        @media (min-width: 768px) {
+            .main-wrapper {
+                border-radius: 40px;
+                padding: 40px;
+                padding-left: 110px;
+                padding-bottom: 40px;
+                min-height: 850px;
+                margin: 40px auto;
+            }
+        }
+
+        .hamburger-menu {
+            display: none; /* Hidden by default, using bottom nav for mobile */
         }
 
         .sidebar-icons {
-            position: absolute;
-            left: 20px;
-            top: 100px;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
             display: flex;
-            flex-direction: column;
-            gap: 24px;
-            padding: 20px;
-            z-index: 10;
+            flex-direction: row;
+            justify-content: space-around;
+            align-items: center;
+            background: #121212;
+            padding: 12px 20px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        @media (min-width: 768px) {
+            .sidebar-icons {
+                position: absolute;
+                left: 30px;
+                top: 140px;
+                bottom: auto;
+                right: auto;
+                flex-direction: column;
+                background: transparent;
+                padding: 0;
+                border: none;
+                gap: 28px;
+                backdrop-filter: none;
+            }
         }
 
         .sidebar-icon {
             width: 44px;
             height: 44px;
             background: transparent;
-            border: 1px solid #222;
-            border-radius: 14px;
+            border: 1px solid transparent;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #444;
+            color: #555;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            flex-shrink: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        @media (min-width: 768px) {
+            .sidebar-icon {
+                width: 48px;
+                height: 48px;
+                border: 1px solid #1a1a1a;
+                border-radius: 16px;
+                color: #333;
+            }
+        }
+
+        .sidebar-icon:active {
+            transform: scale(0.9);
         }
 
         .sidebar-icon:hover {
-            border-color: #444;
             color: #888;
+            background: rgba(255,255,255,0.02);
+        }
+
+        @media (min-width: 768px) {
+            .sidebar-icon:hover {
+                border-color: #333;
+                color: #666;
+            }
         }
 
         .sidebar-icon.active {
-            background: #222;
-            border-color: #222;
-            color: #fff;
+            color: #bef38d;
+            background: rgba(190, 243, 141, 0.1);
+        }
+
+        @media (min-width: 768px) {
+            .sidebar-icon.active {
+                background: #1a1a1a;
+                border-color: #222;
+                color: #fff;
+                box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            }
         }
 
         .plus-btn {
-            position: absolute;
-            left: 40px;
-            bottom: 40px;
-            width: 44px;
-            height: 44px;
-            background: #222;
-            border-radius: 14px;
+            position: fixed;
+            right: 20px;
+            bottom: 90px; /* Above bottom nav */
+            width: 56px;
+            height: 56px;
+            background: #bef38d;
+            border-radius: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #fff;
+            color: #000;
             border: none;
             cursor: pointer;
-            z-index: 10;
-            transition: all 0.3s;
+            z-index: 50;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 10px 25px rgba(190, 243, 141, 0.3);
+            -webkit-tap-highlight-color: transparent;
         }
-        .plus-btn:hover { background: #333; transform: rotate(90deg); }
+
+        .plus-btn:active {
+            transform: scale(0.9) rotate(90deg);
+        }
+
+        @media (min-width: 768px) {
+            .plus-btn {
+                position: absolute;
+                right: auto;
+                bottom: 30px;
+                left: 30px;
+                background: #1a1a1a;
+                color: #fff;
+                box-shadow: none;
+                width: 48px;
+                height: 48px;
+                border-radius: 16px;
+            }
+            .plus-btn:hover { 
+                background: #333; 
+                transform: rotate(90deg); 
+            }
+        }
 
         .dashboard-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 32px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 16px;
+            padding-top: 20px;
+        }
+
+        @media (min-width: 768px) {
+            .dashboard-header {
+                margin-bottom: 32px;
+                padding-top: 0;
+            }
         }
 
         .nav-pills {
             display: flex;
-            gap: 12px;
+            gap: 8px;
             background: #151515;
-            padding: 6px;
+            padding: 4px;
             border-radius: 100px;
+            overflow-x: auto;
+            flex-wrap: nowrap;
+            order: 3;
+            width: 100%;
+        }
+
+        @media (min-width: 768px) {
+            .nav-pills {
+                gap: 12px;
+                padding: 6px;
+                order: auto;
+                width: auto;
+            }
         }
 
         .nav-pill {
-            padding: 8px 16px;
+            padding: 8px 12px;
             border-radius: 100px;
-            font-size: 13px;
+            font-size: 11px;
             font-weight: 600;
             color: #666;
             cursor: pointer;
             transition: all 0.3s ease;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             border: none;
             background: transparent;
+            white-space: nowrap;
+            flex-shrink: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        @media (min-width: 768px) {
+            .nav-pill {
+                padding: 8px 16px;
+                font-size: 13px;
+                gap: 8px;
+            }
         }
 
         .nav-pill.active {
@@ -136,140 +263,162 @@
         .user-profile {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             text-align: right;
+            order: 1;
+            width: 100%;
+            justify-content: flex-end;
+        }
+
+        @media (min-width: 768px) {
+            .user-profile {
+                gap: 12px;
+                order: auto;
+                width: auto;
+            }
         }
 
         .user-info span {
             display: block;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 700;
             color: #fff;
         }
 
+        @media (min-width: 768px) {
+            .user-info span {
+                font-size: 13px;
+            }
+        }
+
         .user-info small {
             color: #666;
-            font-size: 11px;
+            font-size: 10px;
+            display: none;
+        }
+
+        @media (min-width: 768px) {
+            .user-info small {
+                display: block;
+                font-size: 11px;
+            }
         }
 
         .avatar {
-            width: 36px;
-            height: 36px;
-            border-radius: 12px;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
             background: #222;
             border: 1px solid #333;
             overflow: hidden;
         }
+
+        @media (min-width: 768px) {
+            .avatar {
+                width: 36px;
+                height: 36px;
+                border-radius: 12px;
+            }
+        }
+
         .avatar img { width: 100%; height: 100%; object-fit: cover; }
 
         .section-title {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: 900;
-            margin-bottom: 24px;
+            margin-bottom: 16px;
             color: #fff;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        @media (min-width: 768px) {
+            .section-title {
+                font-size: 24px;
+                margin-bottom: 24px;
+            }
         }
 
         .card {
-            background: #151515;
-            border-radius: 32px;
-            padding: 24px;
-            margin-bottom: 24px;
+            background: #121212;
+            border-radius: 24px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.03);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        @media (min-width: 768px) {
+            .card {
+                border-radius: 36px;
+                padding: 28px;
+                margin-bottom: 24px;
+            }
         }
 
         .card-title {
-            font-size: 14px;
+            font-size: 11px;
             font-weight: 800;
-            color: #555;
-            margin-bottom: 16px;
+            color: #444;
+            margin-bottom: 20px;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
         }
 
         .controls-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 24px;
-        }
-        @media(max-width: 992px) {
-            .controls-grid { grid-template-columns: 1fr; }
+            grid-template-columns: 1fr;
+            gap: 20px;
         }
 
-        .timeline-viewport {
-            width: 100%;
-            height: 340px;
-            background: transparent;
-            overflow-x: auto;
-            overflow-y: hidden;
-            position: relative;
-            cursor: grab;
-        }
-
-        .timeline-content {
-            height: 100%;
-            background-image: 
-                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
-            background-size: 80px 100%;
-            position: relative;
-        }
-
-        .string-line {
-            position: absolute;
-            left: 0; right: 0;
-            height: 1px;
-            background: rgba(255,255,255,0.05);
-            z-index: 1;
-        }
-
-        .note-block {
-            position: absolute;
-            height: 44px;
-            border-radius: 100px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: 'Outfit', sans-serif;
-            font-weight: 900;
-            font-size: 16px;
-            transform: translateY(-50%);
-            transition: all 0.2s;
-            z-index: 2;
-        }
-
-        .note-block.string-g { background: #bef38d; color: #000; }
-        .note-block.string-d { background: #ffaa33; color: #000; }
-
-        .note-block.active {
-            box-shadow: 0 0 30px rgba(190, 243, 141, 0.4);
-            transform: translateY(-50%) scale(1.05);
-            filter: brightness(1.1);
-        }
-
-        .playhead {
-            position: absolute;
-            top: 0; bottom: 0;
-            width: 2px;
-            background: #fff;
-            box-shadow: 0 0 20px rgba(255,255,255,0.5);
-            z-index: 10;
-            pointer-events: none;
+        @media (min-width: 992px) {
+            .controls-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 28px;
+            }
         }
 
         .record-btn {
             background: #fff;
             color: #000;
-            border-radius: 100px;
-            padding: 14px 28px;
+            border-radius: 18px;
+            padding: 14px 20px;
+            min-height: 52px;
             font-weight: 800;
-            font-size: 14px;
+            font-size: 13px;
             border: none;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 15px rgba(255,255,255,0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-tap-highlight-color: transparent;
+            width: 100%;
+        }
+
+        @media (min-width: 768px) {
+            .record-btn {
+                padding: 12px 20px;
+                font-size: 13px;
+                border-radius: 18px;
+                min-height: 48px;
+            }
+        }
+
+        .record-btn:active {
+            transform: scale(0.96);
         }
 
         .record-btn:hover {
-            transform: scale(1.02);
-            box-shadow: 0 10px 30px rgba(255,255,255,0.1);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(255,255,255,0.15);
+        }
+
+        .record-btn.secondary {
+            background: #1a1a1a;
+            color: #fff;
+            border: 1px solid #222;
         }
 
         .record-btn.is-recording {
@@ -278,48 +427,127 @@
             animation: pulseRecord 2s infinite;
         }
 
-        @keyframes pulseRecord {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
-            70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-        }
-
         .tuning-btn {
-            background: #222;
-            border: none;
+            background: #1a1a1a;
+            border: 1px solid transparent;
             color: #666;
-            border-radius: 16px;
-            padding: 14px 20px;
+            border-radius: 18px;
+            padding: 16px 20px;
+            min-height: 52px;
             font-size: 13px;
             font-weight: 700;
             transition: all 0.3s;
             cursor: pointer;
             text-align: left;
             width: 100%;
+            display: flex;
+            align-items: center;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        @media (min-width: 768px) {
+            .tuning-btn {
+                padding: 16px 24px;
+                font-size: 13px;
+                border-radius: 20px;
+                min-height: 56px;
+            }
+        }
+
+        .tuning-btn:active {
+            transform: scale(0.97);
+        }
+
+        .tuning-btn:hover {
+            background: #222;
+            color: #888;
         }
 
         .tuning-btn.active {
-            background: #333;
+            background: #222;
+            border-color: #333;
             color: #fff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
 
         .synth-play-btn {
-            background: #1a1a1a;
-            color: #444;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
+            background: #bef38d;
+            color: #000;
+            width: 56px;
+            height: 56px;
+            border-radius: 18px;
             display: flex;
             align-items: center;
             justify-content: center;
             border: none;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 20px rgba(190, 243, 141, 0.2);
+            flex-shrink: 0;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .synth-play-btn.active {
-            background: #bef38d;
-            color: #000;
+        @media (min-width: 768px) {
+            .synth-play-btn {
+                width: 54px;
+                height: 54px;
+                border-radius: 16px;
+            }
+        }
+
+        .synth-play-btn:active {
+            transform: scale(0.95);
+        }
+
+        .synth-play-btn:hover {
+            transform: scale(1.05);
+            filter: brightness(1.1);
+        }
+
+        .synth-play-btn.inactive {
+            background: #1a1a1a;
+            color: #444;
+            box-shadow: none;
+        }
+
+        .slider-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .slider-label {
+            font-size: 10px;
+            font-weight: 800;
+            color: #333;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        @media (min-width: 768px) {
+            .slider-label {
+                font-size: 11px;
+            }
+        }
+
+        .slider-value {
+            font-size: 11px;
+            font-weight: 800;
+            color: #888;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        @media (min-width: 768px) {
+            .slider-value {
+                font-size: 12px;
+            }
         }
 
         input[type=range] {
@@ -328,37 +556,68 @@
             height: 4px;
             border-radius: 10px;
             width: 100%;
+            cursor: pointer;
         }
 
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 16px;
-            height: 16px;
+            width: 18px;
+            height: 18px;
             background: #fff;
             border-radius: 50%;
             cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        @media (min-width: 768px) {
+            input[type=range]::-webkit-slider-thumb {
+                width: 16px;
+                height: 16px;
+            }
         }
 
         .lesson-table {
             width: 100%;
             border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        @media (min-width: 768px) {
+            .lesson-table {
+                font-size: 13px;
+            }
         }
 
         .lesson-table th {
             text-align: left;
             color: #444;
-            font-size: 11px;
+            font-size: 10px;
             text-transform: uppercase;
-            padding-bottom: 12px;
+            padding-bottom: 8px;
             letter-spacing: 1px;
+            padding: 8px 0;
+        }
+
+        @media (min-width: 768px) {
+            .lesson-table th {
+                font-size: 11px;
+                padding-bottom: 12px;
+            }
         }
 
         .lesson-table td {
-            padding: 12px 0;
+            padding: 8px 0;
             border-bottom: 1px solid #1a1a1a;
             color: #888;
-            font-size: 13px;
+            font-size: 11px;
             font-weight: 700;
+        }
+
+        @media (min-width: 768px) {
+            .lesson-table td {
+                padding: 12px 0;
+                font-size: 13px;
+            }
         }
 
         .note-tooltip {
@@ -368,9 +627,9 @@
             transform: translateX(-50%) translateY(-5px);
             background: #222;
             color: #fff;
-            padding: 8px 14px;
-            border-radius: 12px;
-            font-size: 11px;
+            padding: 6px 10px;
+            border-radius: 10px;
+            font-size: 10px;
             font-weight: 700;
             white-space: nowrap;
             opacity: 0;
@@ -379,31 +638,57 @@
             z-index: 100;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
+
+        @media (min-width: 768px) {
+            .note-tooltip {
+                padding: 8px 14px;
+                border-radius: 12px;
+                font-size: 11px;
+            }
+        }
+
         .note-block:hover .note-tooltip { opacity: 1; }
 
         .logo-placeholder {
-            width: 40px;
-            height: 40px;
-            border-radius: 12px;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
             background: #fff;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 900;
             color: #000;
-            font-size: 20px;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        @media (min-width: 768px) {
+            .logo-placeholder {
+                width: 40px;
+                height: 40px;
+                border-radius: 12px;
+                font-size: 20px;
+            }
         }
 
         .recording-timer {
             font-family: 'JetBrains Mono', monospace;
             color: #EF4444;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 800;
             margin-top: 8px;
             display: flex;
             align-items: center;
             gap: 6px;
         }
+
+        @media (min-width: 768px) {
+            .recording-timer {
+                font-size: 12px;
+            }
+        }
+
         .recording-dot {
             width: 8px;
             height: 8px;
@@ -411,7 +696,100 @@
             border-radius: 50%;
             animation: blink 1s infinite;
         }
+
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        .timeline-viewport {
+            width: 100%;
+            height: 280px;
+            background: transparent;
+            overflow-x: auto;
+            overflow-y: hidden;
+            position: relative;
+            cursor: grab;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.02);
+        }
+
+        @media (min-width: 768px) {
+            .timeline-viewport {
+                height: 360px;
+                border-radius: 16px;
+            }
+        }
+
+        .timeline-content {
+            height: 100%;
+            background-image: 
+                linear-gradient(90deg, rgba(255,255,255,0.01) 1px, transparent 1px);
+            background-size: 60px 100%;
+            position: relative;
+        }
+
+        @media (min-width: 768px) {
+            .timeline-content {
+                background-size: 80px 100%;
+            }
+        }
+
+        .string-line {
+            position: absolute;
+            left: 0; right: 0;
+            height: 1px;
+            background: rgba(255,255,255,0.03);
+            z-index: 1;
+        }
+
+        .note-block {
+            position: absolute;
+            height: 40px;
+            border-radius: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 900;
+            font-size: 14px;
+            transform: translateY(-50%);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 2;
+        }
+
+        @media (min-width: 768px) {
+            .note-block {
+                height: 48px;
+                border-radius: 100px;
+                font-size: 16px;
+            }
+        }
+
+        .note-block.string-g { 
+            background: #bef38d; 
+            color: #000; 
+            box-shadow: 0 4px 12px rgba(190, 243, 141, 0.15);
+        }
+        .note-block.string-d { 
+            background: #ffaa33; 
+            color: #000;
+            box-shadow: 0 4px 12px rgba(255, 170, 51, 0.15);
+        }
+
+        .note-block.active {
+            box-shadow: 0 0 30px rgba(190, 243, 141, 0.3);
+            transform: translateY(-50%) scale(1.08);
+            filter: brightness(1.1);
+            z-index: 10;
+        }
+
+        .playhead {
+            position: absolute;
+            top: 0; bottom: 0;
+            width: 2px;
+            background: #fff;
+            box-shadow: 0 0 20px rgba(255,255,255,0.3);
+            z-index: 15;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -427,6 +805,7 @@
             // UI State
             const [activeTab, setActiveTab] = useState('home');
             const [activeNav, setActiveNav] = useState('checkbox');
+            const [sidebarOpen, setSidebarOpen] = useState(false);
 
             // Data State
             const [sequence, setSequence] = useState([]);
@@ -602,131 +981,158 @@
             return (
                 <div className="main-wrapper">
                     <div className="sidebar-icons">
-                        <div className={`sidebar-icon ${activeTab==='home'?'active':''}`} onClick={()=>setActiveTab('home')}>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                        <div className={`sidebar-icon ${activeTab==='home'?'active':''}`} onClick={()=>{setActiveTab('home')}} title="Басты бет">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
                         </div>
-                        <div className={`sidebar-icon ${activeTab==='calendar'?'active':''}`} onClick={()=>setActiveTab('calendar')}>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        <div className={`sidebar-icon ${activeTab==='calendar'?'active':''}`} onClick={()=>{setActiveTab('calendar')}} title="Күнтізбе">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                         </div>
-                        <div className={`sidebar-icon ${activeTab==='star'?'active':''}`} onClick={()=>setActiveTab('star')}>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        <div className={`sidebar-icon ${activeTab==='star'?'active':''}`} onClick={()=>{setActiveTab('star')}} title="Таңдамалылар">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                         </div>
-                        <div className={`sidebar-icon ${activeTab==='settings'?'active':''}`} onClick={()=>setActiveTab('settings')}>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        <div className={`sidebar-icon ${activeTab==='settings'?'active':''}`} onClick={()=>{setActiveTab('settings')}} title="Параметрлер">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                         </div>
                     </div>
                     
-                    <button className="plus-btn" onClick={()=>fileRef.current.click()} title="Аудио файлды жүктеу">
+                    <button className="plus-btn" onClick={()=>fileRef.current.click()} title="Аудио файл жүктеу">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     </button>
 
                     <div className="dashboard-header">
-                        <div style={{display:'flex', alignItems:'center', gap:16}}>
-                            <div className="logo-placeholder" title="Sandyq Dombyra">S</div>
+                        <div style={{display:'flex', alignItems:'center', gap:12, flex:1, minWidth:0}}>
                             <div className="nav-pills">
-                                <button className={`nav-pill ${activeNav==='checkbox'?'active':''}`} onClick={()=>setActiveNav('checkbox')}>Check Box</button>
-                                <button className={`nav-pill ${activeNav==='monitoring'?'active':''}`} onClick={()=>setActiveNav('monitoring')}>Monitoring</button>
-                                <button className={`nav-pill ${activeNav==='support'?'active':''}`} onClick={()=>setActiveNav('support')}>Support</button>
-                                <button className="nav-pill"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
+                                <button className={`nav-pill ${activeNav==='checkbox'?'active':''}`} onClick={()=>setActiveNav('checkbox')}>Тест</button>
+                                <button className={`nav-pill ${activeNav==='monitoring'?'active':''}`} onClick={()=>setActiveNav('monitoring')}>Бақылау</button>
+                                <button className={`nav-pill ${activeNav==='support'?'active':''}`} onClick={()=>setActiveNav('support')}>Көмек</button>
+                                <button className="nav-pill" title="Іздеу"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
                             </div>
                         </div>
                         <div className="user-profile">
-                            <div className="user-info">
-                                <span>Nurmaq AI</span>
-                                <small>@SandyqDombyra</small>
-                            </div>
-                            <div className="avatar">
-                                <img src="nurmaaq.png" alt="User" />
-                            </div>
+                            <img src="nurmaaq.png" alt="Sandyq Dombyra" style={{width:'36px', height:'36px', borderRadius:'12px', border:'1px solid #333', objectFit:'cover'}} />
                         </div>
                     </div>
 
-                    <h2 className="section-title">Check Box</h2>
+                    <h2 className="section-title">Сынақ</h2>
 
                     <div className="controls-grid">
                         <div className="card">
-                            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24}}>
-                                <h3 className="card-title">Transcription</h3>
-                                <div style={{display:'flex', gap:10, alignItems:'center'}}>
-                                    {isRecording && (
-                                        <div className="recording-timer">
-                                            <div className="recording-dot"></div>
-                                            {formatTime(recordingTime)}
-                                        </div>
-                                    )}
-                                    <button className={`record-btn ${isRecording?'is-recording':''}`} onClick={isRecording?stopRecording:startRecording}>
-                                        {isRecording ? 'Stop Recording' : 'Record Audio'}
-                                    </button>
-                                    <button className="record-btn" onClick={()=>fileRef.current.click()}>
-                                        {loading ? 'Processing...' : 'Upload Audio'}
-                                    </button>
-                                </div>
+                            <h3 className="card-title">Транскрипция</h3>
+                            
+                            <div style={{display:'flex', flexDirection:'column', gap:12, marginBottom:20}}>
+                                <button className={`record-btn ${isRecording?'is-recording':''}`} 
+                                    onClick={isRecording?stopRecording:startRecording}>
+                                    {isRecording ? 'Тоқтату' : 'Аудио жазу'}
+                                </button>
+                                <button className="record-btn secondary" 
+                                    onClick={()=>fileRef.current.click()}>
+                                    {loading ? 'Өңдеу...' : 'Файл жүктеу'}
+                                </button>
                                 <input ref={fileRef} type="file" onChange={e=>handleFile(e.target.files[0])} style={{display:'none'}} />
                             </div>
-                            <div style={{display:'flex', gap:12, marginBottom:24}}>
-                                <button className={`synth-play-btn ${isSynthMode?'active':''}`} onClick={()=>setIsSynthMode(!isSynthMode)} title="Синтезаторды қосу/өшіру">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            <div style={{display:'flex', gap:10, flexWrap:'wrap', alignItems:'center', marginBottom:20}}>
+                                <a href="https://www.youtube.com" target="_blank" rel="noreferrer" style={{display:'inline-flex', alignItems:'center', gap:8, padding:'10px 14px', background:'#ff0000', color:'#fff', borderRadius:16, textDecoration:'none', fontWeight:700, fontSize:12}}>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M10 8.64L15.27 12 10 15.36V8.64M21.8 8s-.2-1.4-.8-2c-.8-.8-1.7-.8-2.1-.9C15.6 5 12 5 12 5h0s-3.6 0-6.9.1c-.4 0-1.3.1-2.1.9-.6.6-.8 2-.8 2S2 9.83 2 11.67v0C2 13.5 2.2 15 2.2 15s.2 1.4.8 2c.8.8 1.8.8 2.2.9 1.6.1 6.9.1 6.9.1s3.6 0 6.9-.1c.4 0 1.3-.1 2.1-.9.6-.6.8-2 .8-2s.2-1.5.2-3.33v0C22 9.83 21.8 8 21.8 8Z"/></svg>
+                                    YouTube нұсқаулығы
+                                </a>
+                            </div>
+
+                            {isRecording && <div className="recording-timer"><div className="recording-dot"></div> {formatTime(recordingTime)}</div>}
+
+                            <div style={{display:'flex', gap:12, alignItems:'flex-start', marginBottom:20, flexWrap:'wrap'}}>
+                                <button className={`synth-play-btn ${!isSynthMode?'inactive':''}`} 
+                                    onClick={()=>setIsSynthMode(!isSynthMode)} 
+                                    title="Синтезаторды қосу/өшіру">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                        <polygon points="5 3 19 12 5 21 5 3"/>
+                                    </svg>
                                 </button>
-                                <div style={{flex:1}}>
-                                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:8}}>
-                                        <span style={{fontSize:12, color:'#444', fontWeight:800}}>Sensitivity</span>
-                                        <span style={{fontSize:12, color:'#fff'}}>{Math.round(sensitivity*100)}%</span>
+                                
+                                <div className="slider-container">
+                                    <div className="slider-header">
+                                        <span className="slider-label">Сезімтілік</span>
+                                        <span className="slider-value">{Math.round(sensitivity*100)}%</span>
                                     </div>
-                                    <input type="range" min="0.01" max="0.3" step="0.01" value={sensitivity} onChange={e=>setSensitivity(+e.target.value)} />
+                                    <input type="range" min="0.01" max="0.3" step="0.01" 
+                                        value={sensitivity} onChange={e=>setSensitivity(+e.target.value)} />
                                 </div>
                             </div>
-                            <div className="tuning-group">
+
+                            <div style={{display:'flex', flexDirection:'column', gap:8}}>
                                 {Object.keys(tunings).map(k => (
                                     <button key={k} className={`tuning-btn ${tuning===k?'active':''}`} onClick={()=>setTuning(k)}>
-                                        {tunings[k].label}
+                                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', width:'100%', gap:12}}>
+                                            <span style={{flex:1, textAlign:'left'}}>{tunings[k].label}</span>
+                                            {tuning===k && <div style={{width:6, height:6, background:'#bef38d', borderRadius:'50%', flexShrink:0}}></div>}
+                                        </div>
                                     </button>
                                 ))}
                             </div>
                         </div>
 
                         <div className="card">
-                            <h3 className="card-title">Notes Table</h3>
-                            <div style={{maxHeight: 200, overflowY: 'auto'}}>
+                            <h3 className="card-title">Нота Кестесі</h3>
+                            <div style={{maxHeight: 280, overflowY: 'auto', marginBottom: 16}}>
                                 <table className="lesson-table">
                                     <thead>
-                                        <tr><th>№</th><th>Time</th><th>String</th><th>Fret</th></tr>
+                                        <tr><th>№</th><th>Уақыт</th><th>Струна</th><th>Лад</th></tr>
                                     </thead>
                                     <tbody>
-                                        {sequence.map((n, i) => (
+                                        {sequence.length > 0 ? sequence.map((n, i) => (
                                             <tr key={i}>
-                                                <td>{i+1}</td>
+                                                <td>{String(i+1).padStart(2,'0')}</td>
                                                 <td>{n.t.toFixed(2)}s</td>
                                                 <td>{n.s}</td>
                                                 <td>{n.f}</td>
                                             </tr>
-                                        ))}
+                                        )) : (
+                                            <tr><td colSpan="4" style={{textAlign:'center', padding:'40px 0', opacity:0.3}}>Мәлімет жоқ</td></tr>
+                                        )}
                                     </tbody>
                                 </table>
                             </div>
-                            <button onClick={downloadPDF} style={{marginTop:20, background:'transparent', border:'1px solid #333', color:'#888', padding:'10px 20px', borderRadius:12, fontWeight:700, cursor:'pointer', width:'100%'}}>
-                                Export to PDF
+                            <button onClick={downloadPDF} disabled={!sequence.length}
+                                style={{
+                                    background: sequence.length ? 'rgba(255,255,255,0.05)' : 'transparent', 
+                                    border: '1px solid rgba(255,255,255,0.05)', 
+                                    color: sequence.length ? '#fff' : '#333', 
+                                    padding: '14px 16px', 
+                                    minHeight: '44px',
+                                    borderRadius: 16, 
+                                    fontWeight: 800, 
+                                    fontSize: 11,
+                                    cursor: sequence.length ? 'pointer' : 'default', 
+                                    width: '100%',
+                                    transition: 'all 0.3s',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                PDF-ГЕ ЖҮКТЕУ
                             </button>
                         </div>
                     </div>
 
-                    <div className="card" style={{padding: '32px'}}>
-                        <h3 className="card-title">Projects Timeline</h3>
+                    <div className="card" style={{padding: '16px', marginBottom: 80}}>
+                        <h3 className="card-title">Уақыт Сызығы</h3>
                         <div className="timeline-viewport" ref={timelineRef}>
-                            <div className="timeline-content" style={{width: Math.max(800, audioDuration * PIXELS_PER_SECOND)}}>
+                            <div className="timeline-content" style={{width: Math.max(600, audioDuration * PIXELS_PER_SECOND)}}>
                                 <div className="playhead" style={{left: currentTime * PIXELS_PER_SECOND}}></div>
                                 <div className="string-line" style={{top: G_STRING_Y}}></div>
                                 <div className="string-line" style={{top: D_STRING_Y}}></div>
                                 {sequence.map((n, i) => (
                                     <div key={i} className={`note-block ${n.s==='G'?'string-g':'string-d'} ${currentTime>=n.t && currentTime<=n.t+(n.dur/1000)?'active':''}`}
                                         style={{left: n.t*PIXELS_PER_SECOND, top: n.s==='G'?G_STRING_Y:D_STRING_Y, width: Math.max(40, (n.dur/1000)*PIXELS_PER_SECOND)}}
-                                        onClick={()=>playSynth(n.hz)}>
+                                        onClick={()=>playSynth(n.hz)}
+                                        onTouchStart={(e) => {e.preventDefault(); playSynth(n.hz);}}
+                                        title={`${n.note} (${n.hz}Hz) @ ${n.t.toFixed(2)}s`}>
                                         {n.f}
                                         <div className="note-tooltip">{n.note} ({n.hz}Hz)</div>
                                     </div>
                                 ))}
                             </div>
                         </div>
-                        {audioUrl && <audio ref={audioRef} src={audioUrl} controls style={{marginTop: 20, width:'100%'}} />}
+                        {audioUrl && <audio ref={audioRef} src={audioUrl} controls style={{marginTop: 16, width:'100%', minHeight:'44px'}} />}
                         {error && <div style={{color:'#EF4444', fontSize:12, marginTop:10, fontWeight:700}}>{error}</div>}
                     </div>
                 </div>
