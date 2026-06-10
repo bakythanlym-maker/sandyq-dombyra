@@ -28,12 +28,12 @@
         }
 
         body.dark-theme {
-            --bg-color: #050505;
+            --bg-color: #b5d5a8;
             --text-color: #F3F4F6;
         }
 
         body.light-theme {
-            --bg-color: #f0f2f5;
+            --bg-color: #b5d5a8;
             --text-color: #1a1a1a;
         }
         ::-webkit-scrollbar{width:6px;height:6px}
@@ -44,7 +44,7 @@
         .main-wrapper {
             width: 100%;
             max-width: 1200px;
-            background: var(--card-bg, #0c0c0c);
+            background: var(--card-bg, #b5d5a8);
             border-radius: 0;
             padding: 20px;
             padding-bottom: 80px; /* Space for bottom nav */
@@ -56,7 +56,7 @@
             transition: background 0.3s;
         }
 
-        body.dark-theme .main-wrapper { --card-bg: #0c0c0c; }
+        body.dark-theme .main-wrapper { --card-bg: #050505; }
         body.light-theme .main-wrapper { --card-bg: #ffffff; }
 
         @media (min-width: 768px) {
@@ -1190,6 +1190,43 @@
 
             return (
                 <div className="main-wrapper">
+                    {loading && (
+                        <div style={{
+                            position: 'absolute',
+                            top: 0, left: 0, right: 0, bottom: 0,
+                            background: 'rgba(0, 0, 0, 0.9)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            zIndex: 1000,
+                            backdropFilter: 'blur(10px)',
+                            borderRadius: '40px'
+                        }}>
+                            <div style={{
+                                width: '60px',
+                                height: '60px',
+                                border: '4px solid rgba(255, 255, 255, 0.1)',
+                                borderLeftColor: '#BEF38D',
+                                borderRadius: '50%',
+                                animation: 'spin 1s linear infinite',
+                                marginBottom: '16px'
+                            }} />
+                            <div style={{
+                                color: '#fff',
+                                fontSize: '16px',
+                                fontFamily: 'Outfit, sans-serif',
+                                fontWeight: 500
+                            }}>
+                                Ноталар шығарылуда...
+                            </div>
+                            <style>{`
+                                @keyframes spin {
+                                    to { transform: rotate(360deg); }
+                                }
+                            `}</style>
+                        </div>
+                    )}
                     {(showSupport || isSearchOpen) && (
                         <div 
                             onClick={() => { setShowSupport(false); setIsSearchOpen(false); }}
