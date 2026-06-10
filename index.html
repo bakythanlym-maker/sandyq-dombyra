@@ -1056,7 +1056,6 @@
             const [audioDuration, setAudioDuration] = useState(0);
             const [isRecording, setIsRecording] = useState(false);
             const [recordingTime, setRecordingTime] = useState(0);
-            const [youtubeUrl, setYoutubeUrl] = useState('');
             const [history, setHistory] = useState(() => JSON.parse(localStorage.getItem('dombyra_history') || '[]'));
             const [favorites, setFavorites] = useState(() => JSON.parse(localStorage.getItem('dombyra_favorites') || '[]'));
             const [theme, setTheme] = useState(() => localStorage.getItem('dombyra_theme') || 'dark');
@@ -1265,49 +1264,7 @@
                 } finally { setLoading(false); }
             };
 
-            const handleYoutube = async () => {
-                if (!youtubeUrl) return;
-                setLoading(true); setError(null); setSequence([]);
-                setCurrentTime(0);
-                setIsPlaying(false);
-                setIsSynthMode(false);
-                setAudioDuration(0);
-                lastPlayedTimeRef.current = -1;
-                const fd = new FormData();
-                fd.append('url', youtubeUrl);
-                fd.append('threshold', sensitivity);
-                fd.append('base_d', tunings[tuning].d);
-                fd.append('base_g', tunings[tuning].g);
-                fd.append('min_duration_ms', minDuration);
-                fd.append('quality', quality);
-                try {
-                    const res = await fetch(`${getBackendBaseUrl()}/transcribe_youtube`, { method:'POST', body:fd });
-                    if (!res.ok) throw new Error('YouTube аудиосын алу мүмкін болмады');
-                    const data = await res.json();
-                    console.log('Received YouTube sequence:', data.sequence?.length, 'notes');
-                    setSequence(data.sequence || []);
-                    setAudioDuration(data.duration || 0);
-                    
-                    if (data.sequence && data.sequence.length > 0) {
-                        const newEntry = {
-                            id: Date.now(),
-                            name: 'YouTube: ' + (youtubeUrl.substring(0, 20) + '...'),
-                            date: new Date().toLocaleString(),
-                            duration: data.duration,
-                            sequence: data.sequence,
-                            type: 'youtube',
-                            url: youtubeUrl
-                        };
-                        setHistory(prev => [newEntry, ...prev].slice(0, 20));
-                    }
-                    
-                    // YouTube audio URL is not directly available from backend in this simple version
-                    // We could potentially return a link to the downloaded wav, but for now just show results
-                    setAudioUrl(null); 
-                } catch (err) {
-                    setError(err.message || 'Серверге қосылу мүмкін болмады');
-                } finally { setLoading(false); }
-            };
+            
 
             const handleDrop = (e) => {
                 e.preventDefault();
@@ -1570,48 +1527,7 @@
 
                                 {isRecording && <div className="recording-timer"><div className="recording-dot"></div> {formatTime(recordingTime)}</div>}
 
-                                <div style={{display:'flex', gap:10, flexWrap:'wrap', alignItems:'center', marginTop:20}}>
-                                    <div style={{position:'relative', flex:1, minWidth:'100px'}}>
-                                        <input 
-                                            type="text" 
-                                            placeholder="YouTube сілтемесін қойыңыз..." 
-                                            value={youtubeUrl}
-                                            onChange={(e) => setYoutubeUrl(e.target.value)}
-                                            style={{
-                                                width: '100%',
-                                                background: 'var(--input-bg, #1a1a1a)',
-                                                border: '1px solid #333',
-                                                borderRadius: '16px',
-                                                padding: '14px 16px',
-                                                color: 'var(--text-color)',
-                                                fontSize: '13px',
-                                                outline: 'none'
-                                            }}
-                                        />
-                                        <button 
-                                            onClick={handleYoutube}
-                                            disabled={loading || !youtubeUrl}
-                                            style={{
-                                                position: 'absolute',
-                                                right: '6px',
-                                                top: '0px',
-                                                bottom: '6px',
-                                                background: '#ff0000',
-                                                color: '#fff',
-                                                border: 'none',
-                                                borderRadius: '30px',
-                                                padding: '0 14px',
-                                                fontWeight: '800',
-                                                fontSize: '11px',
-                                                cursor: 'pointer',
-                                                opacity: (loading || !youtubeUrl) ? 0.5 : 1,
-                                                transition: 'all 0.3s'
-                                            }}
-                                        >
-                                            {loading ? '...' : '▷'}
-                                        </button>
-                                    </div>
-                                </div>
+                            
                             </div>
 
                             <div className="card">
