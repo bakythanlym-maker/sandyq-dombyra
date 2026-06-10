@@ -1203,28 +1203,25 @@
                             backdropFilter: 'blur(10px)',
                             borderRadius: '40px'
                         }}>
-                            <div style={{
-                                width: '60px',
-                                height: '60px',
-                                border: '4px solid rgba(255, 255, 255, 0.1)',
-                                borderLeftColor: '#BEF38D',
-                                borderRadius: '50%',
-                                animation: 'spin 1s linear infinite',
-                                marginBottom: '16px'
-                            }} />
+                            <img 
+                                src="loading.gif" 
+                                alt="Жүктелуде..." 
+                                style={{
+                                    width: '80px',
+                                    height: '80px',
+                                    marginBottom: '20px',
+                                    objectFit: 'contain'
+                                }} 
+                            />
                             <div style={{
                                 color: '#fff',
                                 fontSize: '16px',
                                 fontFamily: 'Outfit, sans-serif',
-                                fontWeight: 500
+                                fontWeight: 500,
+                                letterSpacing: '0.5px'
                             }}>
                                 Ноталар шығарылуда...
                             </div>
-                            <style>{`
-                                @keyframes spin {
-                                    to { transform: rotate(360deg); }
-                                }
-                            `}</style>
                         </div>
                     )}
                     {(showSupport || isSearchOpen) && (
