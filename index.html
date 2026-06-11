@@ -523,6 +523,232 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
 
+        .tuner-display {
+            display: grid;
+            gap: 22px;
+            padding: 0;
+        }
+
+        .tuner-gauge {
+            position: relative;
+            width: min(360px, 90vw);
+            height: min(360px, 90vw);
+            margin: 0 auto;
+            border-radius: 50%;
+            background: conic-gradient(from 135deg at 50% 50%, 
+                #ef4444 0deg, #f97316 45deg, #eab308 90deg, #22c55e 135deg, #06b6d4 180deg, #3b82f6 225deg, #8b5cf6 270deg, #ef4444 360deg);
+            padding: 3px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+        }
+
+        .tuner-gauge::before {
+            content: '';
+            position: absolute;
+            inset: 3px;
+            border-radius: 50%;
+            background: #0f172a;
+        }
+
+        .tuner-gauge-inner {
+            position: absolute;
+            inset: 3px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            z-index: 1;
+        }
+
+        .tuner-needle {
+            position: absolute;
+            width: 4px;
+            height: 45%;
+            background: #f8fafc;
+            border-radius: 999px;
+            top: 5%;
+            left: 50%;
+            transform: translateX(-50%) rotate(var(--needle-angle, 0deg));
+            box-shadow: 0 0 12px rgba(248,250,252,0.6);
+            transform-origin: 50% calc(95% + 80px);
+            transition: transform 0.08s ease-out;
+        }
+
+        .tuner-display-text {
+            text-align: center;
+            z-index: 2;
+        }
+
+        .tuner-display-text .note {
+            font-size: 64px;
+            font-weight: 900;
+            letter-spacing: -0.08em;
+            color: #f8fafc;
+        }
+
+        .tuner-display-text .freq {
+            font-size: 13px;
+            color: #cbd5e1;
+            letter-spacing: 0.08em;
+            margin-top: 4px;
+        }
+
+        .tuner-display-text .status {
+            display: inline-block;
+            margin-top: 12px;
+            padding: 8px 16px;
+            border-radius: 999px;
+            background: rgba(190,243,141,0.14);
+            color: #bef38d;
+            font-weight: 800;
+            font-size: 12px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .tuner-controls {
+            display: grid;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .tuner-string-select {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .tuner-string-select button {
+            padding: 12px 16px;
+            border-radius: 16px;
+            border: 2px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.05);
+            color: #cbd5e1;
+            font-weight: 700;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .tuner-string-select button.active {
+            border-color: #bef38d;
+            background: #bef38d;
+            color: #000;
+        }
+
+        .tuner-start-btn {
+            padding: 14px 20px;
+            border-radius: 18px;
+            border: none;
+            background: #bef38d;
+            color: #000;
+            font-weight: 800;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .tuner-start-btn:active {
+            transform: scale(0.96);
+        }
+
+        .tuner-meter {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 32px;
+            padding: 24px;
+            display: grid;
+            gap: 18px;
+            justify-items: center;
+            text-align: center;
+        }
+
+        .tuner-meter .note-label {
+            font-size: 54px;
+            font-weight: 900;
+            letter-spacing: -0.03em;
+            color: #f8fafc;
+        }
+
+        .tuner-meter .string-hint {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #8b99ac;
+            letter-spacing: 1.5px;
+        }
+
+        .tuner-status {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            padding: 8px 16px;
+            background: rgba(190,243,141,0.12);
+            color: #bef38d;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            font-size: 12px;
+        }
+
+        .tuner-needle {
+            width: 100%;
+            height: 8px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.08);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tuner-needle::before {
+            content: '';
+            position: absolute;
+            left: calc(50% + var(--cents, 0px));
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #bef38d;
+            box-shadow: 0 0 24px rgba(190,243,141,0.45);
+        }
+
+        .tuner-scale {
+            position: relative;
+            width: 100%;
+            height: 24px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 4px;
+            color: #8b99ac;
+            font-size: 12px;
+        }
+
+        .tuner-scale span {
+            display: inline-flex;
+            justify-content: center;
+        }
+
+        .tuner-readout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .tuner-readout div {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 18px;
+            padding: 14px 16px;
+            text-align: left;
+        }
+
+        .tuner-readout strong {
+            display: block;
+            margin-top: 8px;
+            font-size: 18px;
+            font-weight: 800;
+            color: #fff;
+        }
+
         .synth-play-btn {
             background: #bef38d;
             color: #000;
@@ -617,6 +843,7 @@
         }
 
         input[type=range] {
+            appearance: none;
             -webkit-appearance: none;
             background: #222;
             height: 4px;
@@ -626,6 +853,7 @@
         }
 
         input[type=range]::-webkit-slider-thumb {
+            appearance: none;
             -webkit-appearance: none;
             width: 18px;
             height: 18px;
@@ -1079,6 +1307,17 @@
             const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
             const [audioDuration, setAudioDuration] = useState(0);
             const [isRecording, setIsRecording] = useState(false);
+            const [tunerActive, setTunerActive] = useState(false);
+            const [selectedString, setSelectedString] = useState('G');
+            const [tunerFreq, setTunerFreq] = useState(0);
+            const [tunerCents, setTunerCents] = useState(0);
+            const [tunerStatus, setTunerStatus] = useState('Тұрақты емес');
+            const tunerStreamRef = useRef(null);
+            const tunerAnalyserRef = useRef(null);
+            const tunerDataRef = useRef(null);
+            const tunerRunningRef = useRef(false);
+            const selectedStringRef = useRef('G');
+            const tuningRef = useRef(tuning);
             const [recordingTime, setRecordingTime] = useState(0);
             const [history, setHistory] = useState(() => JSON.parse(localStorage.getItem('dombyra_history') || '[]'));
             const [favorites, setFavorites] = useState(() => JSON.parse(localStorage.getItem('dombyra_favorites') || '[]'));
@@ -1158,6 +1397,8 @@
             useEffect(() => { currentTimeRef.current = currentTime; }, [currentTime]);
             useEffect(() => { playbackSpeedRef.current = playbackSpeed; }, [playbackSpeed]);
             useEffect(() => { if (audioRef.current) audioRef.current.playbackRate = playbackSpeed; }, [playbackSpeed, audioUrl]);
+            useEffect(() => { selectedStringRef.current = selectedString; }, [selectedString]);
+            useEffect(() => { tuningRef.current = tuning; }, [tuning]);
 
             const PIXELS_PER_SECOND = 160;
             const G_STRING_Y = 100;
@@ -1169,27 +1410,227 @@
                 'AD': { d:110.00, g:146.83, label:'A – D (Ля бұрауы)' }
             };
 
-            const playSynth = (frequency) => {
+            const activeTargetHz = tunings[tuning][selectedString.toLowerCase()];
+
+            const playSynth = async (frequency) => {
                 try {
                     if (!audioCtxRef.current) {
                         const AudioContext = window.AudioContext || window.webkitAudioContext;
                         audioCtxRef.current = new AudioContext();
                     }
                     const ctx = audioCtxRef.current;
-                    if (ctx.state === 'suspended') ctx.resume();
+                    if (ctx.state === 'suspended') await ctx.resume();
                     const osc = ctx.createOscillator();
                     const gainNode = ctx.createGain();
                     osc.type = 'triangle';
                     osc.frequency.setValueAtTime(frequency, ctx.currentTime);
-                    gainNode.gain.setValueAtTime(0, ctx.currentTime);
+                    gainNode.gain.setValueAtTime(0.0001, ctx.currentTime);
                     gainNode.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 0.01);
                     gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.0);
                     osc.connect(gainNode);
                     gainNode.connect(ctx.destination);
                     osc.start();
                     osc.stop(ctx.currentTime + 1.1);
-                } catch(e) {}
+                } catch(e) {
+                    console.warn('Synth play error', e);
+                }
             };
+
+            const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+            const getNoteFromFrequency = (frequency) => {
+                if (frequency <= 0) return { note:'---', cents:0, freq:0, targetHz: 0 };
+                const noteNumber = 12 * (Math.log2(frequency / 440)) + 69;
+                const rounded = Math.round(noteNumber);
+                const noteName = noteNames[(rounded + 120) % 12];
+                const octave = Math.floor(rounded / 12) - 1;
+                const standardFreq = 440 * Math.pow(2, (rounded - 69) / 12);
+                const cents = Math.round(1200 * Math.log2(frequency / standardFreq));
+                return { note: noteName + octave, cents, freq:frequency, targetHz: standardFreq };
+            };
+
+            const autoCorrelate = (buffer, sampleRate, minFreq = 50, maxFreq = 1200) => {
+                const SIZE = buffer.length;
+                let rms = 0;
+                for (let i = 0; i < SIZE; i++) {
+                    const val = buffer[i];
+                    rms += val * val;
+                }
+                rms = Math.sqrt(rms / SIZE);
+                if (rms < 0.003) return -1;
+                
+                const minLag = Math.floor(sampleRate / maxFreq);
+                const maxLag = Math.ceil(sampleRate / minFreq);
+                if (minLag >= maxLag || minLag >= SIZE / 2) return -1;
+                
+                const r = new Float32Array(maxLag);
+                for (let lag = minLag; lag < Math.min(maxLag, SIZE / 2); lag++) {
+                    let sum = 0;
+                    for (let i = 0; i < SIZE - lag; i++) {
+                        sum += buffer[i] * buffer[i + lag];
+                    }
+                    r[lag] = sum;
+                }
+                
+                let d = minLag;
+                while (d < maxLag - 1 && r[d] > r[d + 1]) d++;
+                
+                let bestPos = -1;
+                let bestVal = -Infinity;
+                for (let i = d; i < Math.min(maxLag, SIZE / 2); i++) {
+                    if (r[i] > bestVal) {
+                        bestVal = r[i];
+                        bestPos = i;
+                    }
+                }
+                
+                if (bestPos <= minLag || bestVal / (rms * rms) < 0.9) return -1;
+                
+                if (bestPos > maxLag - 2) return sampleRate / bestPos;
+                
+                const x1 = r[bestPos - 1];
+                const x2 = r[bestPos];
+                const x3 = r[bestPos + 1];
+                const a = (x1 + x3 - 2 * x2) / 2;
+                const b = (x3 - x1) / 2;
+                const peak = bestPos + (a ? -b / (2 * a) : 0);
+                return Math.max(minFreq, Math.min(maxFreq, sampleRate / peak));
+            };
+
+            const startTuner = async () => {
+                if (tunerRunningRef.current) return;
+                setTunerStatus('Микрофон іске қосылуда...');
+                try {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
+                    const ctx = audioCtxRef.current;
+                    if (ctx.state === 'suspended') await ctx.resume();
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    tunerStreamRef.current = stream;
+                    const source = ctx.createMediaStreamSource(stream);
+                    const analyser = ctx.createAnalyser();
+                    analyser.fftSize = 4096;
+                    analyser.minDecibels = -90;
+                    analyser.maxDecibels = -10;
+                    analyser.smoothingTimeConstant = 0.85;
+                    source.connect(analyser);
+                    tunerAnalyserRef.current = analyser;
+                    tunerDataRef.current = new Float32Array(analyser.fftSize);
+                    tunerRunningRef.current = true;
+                    setTunerActive(true);
+                    
+                    let backendUpdateCounter = 0;
+                    
+                    const update = async () => {
+                        if (!tunerRunningRef.current || !tunerAnalyserRef.current) return;
+                        tunerAnalyserRef.current.getFloatTimeDomainData(tunerDataRef.current);
+                        
+                        // Use local autocorrelation for instant feedback
+                        const pitch = autoCorrelate(tunerDataRef.current, ctx.sampleRate);
+                        if (pitch > 0) {
+                            const targetHz = tunings[tuningRef.current][selectedStringRef.current.toLowerCase()];
+                            const cents = Math.round(1200 * Math.log2(pitch / targetHz));
+                            setTunerFreq(Math.round(pitch * 10) / 10);
+                            setTunerCents(cents);
+                            const diff = Math.abs(cents);
+                            if (diff <= 5) {
+                                setTunerStatus('Тұрақты');
+                            } else if (cents > 0) {
+                                setTunerStatus('Өткір');
+                            } else {
+                                setTunerStatus('Төмен');
+                            }
+                        } else {
+                            setTunerStatus('Дыбыс анықталмады');
+                        }
+                        
+                        // Send to backend every ~2 seconds for accuracy confirmation (optional)
+                        backendUpdateCounter++;
+                        if (backendUpdateCounter >= 120 && pitch > 0) {
+                            backendUpdateCounter = 0;
+                            try {
+                                const wav = float32ToWav(tunerDataRef.current, ctx.sampleRate);
+                                const blob = new Blob([wav], {type: 'audio/wav'});
+                                const formData = new FormData();
+                                formData.append('file', blob, 'tuner_sample.wav');
+                                
+                                const backendUrl = getBackendBaseUrl();
+                                const response = await fetch(`${backendUrl}/tune`, {method: 'POST', body: formData});
+                                const result = await response.json();
+                                if (result.frequency && result.frequency > 0) {
+                                    // Optional: You can use backend result for calibration
+                                    // console.log('Backend confirmation:', result.frequency);
+                                }
+                            } catch (err) {
+                                console.warn('Backend tuner (non-critical):', err);
+                            }
+                        }
+                        
+                        requestAnimationFrame(update);
+                    };
+                    update();
+                } catch (err) {
+                    console.warn('Tuner error', err);
+                    setTunerStatus('Микрофон қол жетімді емес');
+                }
+            };
+
+            const float32ToWav = (float32Data, sampleRate) => {
+                const length = float32Data.length;
+                const buffer = new ArrayBuffer(44 + length * 2);
+                const view = new DataView(buffer);
+                
+                // WAV header helper
+                const writeString = (offset, string) => {
+                    for (let i = 0; i < string.length; i++) {
+                        view.setUint8(offset + i, string.charCodeAt(i));
+                    }
+                };
+                
+                writeString(0, 'RIFF');
+                view.setUint32(4, 36 + length * 2, true);
+                writeString(8, 'WAVE');
+                writeString(12, 'fmt ');
+                view.setUint32(16, 16, true);
+                view.setUint16(20, 1, true);
+                view.setUint16(22, 1, true);
+                view.setUint32(24, sampleRate, true);
+                view.setUint32(28, sampleRate * 2, true);
+                view.setUint16(32, 2, true);
+                view.setUint16(34, 16, true);
+                writeString(36, 'data');
+                view.setUint32(40, length * 2, true);
+                
+                let j = 0;
+                for (let i = 0; i < length; i++) {
+                    const s = Math.max(-1, Math.min(1, float32Data[i]));
+                    view.setInt16(44 + j, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+                    j += 2;
+                }
+                
+                return buffer;
+            };
+
+            const stopTuner = () => {
+                tunerRunningRef.current = false;
+                setTunerActive(false);
+                setTunerFreq(0);
+                setTunerCents(0);
+                setTunerStatus('Тюнер тоқтатылды');
+                if (tunerStreamRef.current) {
+                    tunerStreamRef.current.getTracks().forEach(track => track.stop());
+                    tunerStreamRef.current = null;
+                }
+                tunerAnalyserRef.current = null;
+            };
+
+            useEffect(() => {
+                if (activeTab === 'tuner') {
+                    startTuner();
+                } else {
+                    stopTuner();
+                }
+                return () => stopTuner();
+            }, [activeTab]);
 
             const togglePlayback = () => {
                 const newPlaying = !isPlaying;
@@ -1451,8 +1892,11 @@
                         <div className={`sidebar-icon ${activeTab==='home'?'active':''}`} onClick={()=>{setActiveTab('home')}} title="Басты бет">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
                         </div>
-                        <div className={`sidebar-icon ${activeTab==='calendar'?'active':''}`} onClick={()=>{setActiveTab('calendar')}} title="Күнтізбе">
+                        <div className={`sidebar-icon ${activeTab==='calendar'?'active':''}`} onClick={()=>{setActiveTab('calendar')}} title="Тарих">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        </div>
+                        <div className={`sidebar-icon ${activeTab==='tuner'?'active':''}`} onClick={()=>{setActiveTab('tuner')}} title="Тюнер">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 4v5a6 6 0 0 0 12 0V4"/><path d="M7 9h10"/><circle cx="8" cy="17" r="2"/><circle cx="16" cy="17" r="2"/></svg>
                         </div>
                         <div className={`sidebar-icon ${activeTab==='star'?'active':''} ${rotatingIcon==='star' ? 'rotating' : ''}`} onClick={()=>{ rotateAndSet('star','star'); }} title="Таңдамалылар">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
@@ -1624,6 +2068,120 @@
                             ) : (
                                 <div style={{textAlign:'center', padding:'60px 0', opacity:0.3}}>Тарих бос</div>
                             )}
+                        </div>
+                    )}
+
+                    {activeTab === 'tuner' && (
+                        <div style={{padding: '0', background: 'transparent', border: 'none', boxShadow: 'none', marginBottom: 0}}>
+                            <div style={{display: 'flex', flexDirection: 'column', gap: 20, justifyItems: 'center', alignItems: 'center', padding: '20px', minHeight: 'calc(100vh - 140px)', justifyContent: 'space-between'}}>
+                                {/* Header info */}
+                                <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: '100%'}}>
+                                    <div style={{fontSize: '18px', fontWeight: 600, color: '#bef38d'}}>
+                                        {selectedString} БҰРАУ
+                                    </div>
+                                    <div style={{fontSize: '12px', color: '#888'}}>...</div>
+                                </div>
+
+                                {/* Tuner display with image */}
+                                <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, flex: 1, justifyContent: 'center'}}>
+                                    {/* SVG Dombra Peg */}
+                                    <svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style={{filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))'}}>
+                                        <ellipse cx="60" cy="50" rx="35" ry="20" fill="#8B4513" stroke="#654321" strokeWidth="1" />
+                                        <circle cx="60" cy="50" r="12" fill="#654321" stroke="#3d2817" strokeWidth="1" />
+                                        <rect x="50" y="60" width="20" height="50" rx="4" fill="#A0522D" stroke="#654321" strokeWidth="1" />
+                                        <circle cx="60" cy="75" r="8" fill="#FFD700" opacity="0.6" />
+                                    </svg>
+                                    
+                                    {/* Status display */}
+                                    <div style={{textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 8}}>
+                                        <div style={{fontSize: '14px', fontWeight: 600, color: tunerCents > 5 ? '#ff6b6b' : tunerCents < -5 ? '#4dabf7' : '#bef38d'}}>
+                                            {tunerStatus}
+                                        </div>
+                                        <div style={{fontSize: '24px', fontWeight: 800, color: '#fff', fontFamily: 'monospace'}}>
+                                            {tunerFreq > 0 ? `${tunerFreq.toFixed(1)} Hz` : '---'}
+                                        </div>
+                                        <div style={{fontSize: '13px', color: '#aaa', fontFamily: 'monospace'}}>
+                                            {tunerCents > 0 ? '+' : ''}{tunerCents.toFixed(0)} cents
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* String selector buttons */}
+                                <div style={{display: 'flex', gap: 12, width: '100%', justifyContent: 'center', maxWidth: '300px'}}>
+                                    <button 
+                                        onClick={() => setSelectedString('G')}
+                                        style={{
+                                            flex: 1,
+                                            padding: '12px',
+                                            background: selectedString === 'G' ? '#7C3AED' : '#333',
+                                            color: '#fff',
+                                            border: 'none',
+                                            borderRadius: '8px',
+                                            fontWeight: 600,
+                                            fontSize: '13px',
+                                            cursor: 'pointer',
+                                            minHeight: '44px'
+                                        }}
+                                    >
+                                        УСП
+                                    </button>
+                                    <button 
+                                        onClick={() => setSelectedString('D')}
+                                        style={{
+                                            flex: 1,
+                                            padding: '12px',
+                                            background: selectedString === 'D' ? '#f0f0f0' : '#e8e8e8',
+                                            color: '#000',
+                                            border: '1px solid #ccc',
+                                            borderRadius: '8px',
+                                            fontWeight: 600,
+                                            fontSize: '13px',
+                                            cursor: 'pointer',
+                                            minHeight: '44px'
+                                        }}
+                                    >
+                                        АСТМ
+                                    </button>
+                                </div>
+
+                                {/* Action buttons */}
+                                <div style={{display: 'flex', gap: 12, width: '100%', maxWidth: '300px'}}>
+                                    <button 
+                                        onClick={() => tunerActive ? stopTuner() : startTuner()}
+                                        style={{
+                                            flex: 1,
+                                            padding: '14px',
+                                            background: '#7C3AED',
+                                            color: '#fff',
+                                            border: 'none',
+                                            borderRadius: '8px',
+                                            fontWeight: 700,
+                                            fontSize: '14px',
+                                            cursor: 'pointer',
+                                            minHeight: '48px'
+                                        }}
+                                    >
+                                        ОН БҰРАУ
+                                    </button>
+                                    <button 
+                                        onClick={() => playSynth(tunings[tuningRef.current][selectedStringRef.current.toLowerCase()])}
+                                        style={{
+                                            flex: 1,
+                                            padding: '14px',
+                                            background: '#f0f0f0',
+                                            color: '#000',
+                                            border: '1px solid #ccc',
+                                            borderRadius: '8px',
+                                            fontWeight: 700,
+                                            fontSize: '14px',
+                                            cursor: 'pointer',
+                                            minHeight: '48px'
+                                        }}
+                                    >
+                                        ТЕРІС БҰРАУ
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     )}
 
