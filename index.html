@@ -2762,40 +2762,54 @@
     }).toDestination();
 
     function App() {
-        // ... (Тут должна быть твоя текущая логика состояний: sequence, audioUrl и т.д.)
-        // Убедись, что у тебя есть state, например: const [sequence, setSequence] = React.useState([]);
+    // 1. Создаем состояние для хранения нот, которые придут с сервера
+    const [sequence, setSequence] = React.useState([]);
+    const [audioUrl, setAudioUrl] = React.useState(null);
+    const [error, setError] = React.useState(null);
 
-        // ФУНКЦИЯ ВОСПРОИЗВЕДЕНИЯ
-        const playSynth = async (noteObject) => {
-            await Tone.start(); // Разблокировка звука браузером
-            // noteObject - это объект ноты (n), который ты передаешь из массива
-            // Теперь мы используем noteObject.note (например "A#3") вместо частоты Hz
-            dombraSynth.triggerAttackRelease(noteObject.note, "4n");
-        };
+    // Функция воспроизведения (то, что мы добавили)
+    const playSynth = async (noteObject) => {
+        await Tone.start();
+        // Используем свойство .note, которое должно приходить с бэкенда
+        dombraSynth.triggerAttackRelease(noteObject.note, "4n");
+    };
 
-        // ТВОЙ ОСТАЛЬНОЙ КОД (JSX, обработчики событий)
-        // ВАЖНО: В твоем цикле рендеринга нот измени onClick:
-        
-        /* Было: onClick={() => playSynth(n.hz)}
-           Стало: onClick={() => playSynth(n)} 
-        */
+    // 2. Логика отправки файла (Твой старый fetch, который нужно внедрить)
+    const handleTranscribe = async (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+            const response = await fetch('/transcribe', { method: 'POST', body: formData });
+            const data = await response.json();
+            if (data.sequence) {
+                setSequence(data.sequence); // Сохраняем ноты в состояние
+            }
+        } catch (e) {
+            setError("Ошибка при транскрипции");
+        }
+    };
 
-        return (
-            <div>
-                {/* Твой существующий интерфейс */}
+    return (
+        <div>
+            {/* Твой интерфейс загрузки файла */}
+            <input type="file" onChange={(e) => handleTranscribe(e.target.files[0])} />
+
+            {/* Отрисовка нот */}
+            <div className="timeline">
                 {sequence.map((n, i) => (
                     <div 
-                        key={i}
-                        className="note"
-                        onClick={() => playSynth(n)}
-                        // ... остальные пропсы
+                        key={i} 
+                        className="note" 
+                        onClick={() => playSynth(n)} // Теперь это будет работать!
+                        style={{ left: `${n.t * 50}px` }} // Пример позиционирования
                     >
                         {n.f}
                     </div>
                 ))}
             </div>
-        );
-    }
+        </div>
+    );
+}
 
     ReactDOM.createRoot(document.getElementById('root')).render(<App />);
 </script>
