@@ -7,7 +7,7 @@
     <title>Sandyq)Dombyra AI | Dashboard</title>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <link
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@700;800&display=swap"
@@ -2747,6 +2747,59 @@
 
         ReactDOM.createRoot(document.getElementById('root')).render(<App />);
     </script>
+
+
+
+
+
+<script type="text/babel">
+    // Инициализация синтезатора "Домбра"
+    const dombraSynth = new Tone.PluckSynth({
+        attackNoise: 1,
+        dampening: 4000,
+        resonance: 0.9,
+        envelope: { attack: 0.001, decay: 0.4, release: 0.1 }
+    }).toDestination();
+
+    function App() {
+        // ... (Тут должна быть твоя текущая логика состояний: sequence, audioUrl и т.д.)
+        // Убедись, что у тебя есть state, например: const [sequence, setSequence] = React.useState([]);
+
+        // ФУНКЦИЯ ВОСПРОИЗВЕДЕНИЯ
+        const playSynth = async (noteObject) => {
+            await Tone.start(); // Разблокировка звука браузером
+            // noteObject - это объект ноты (n), который ты передаешь из массива
+            // Теперь мы используем noteObject.note (например "A#3") вместо частоты Hz
+            dombraSynth.triggerAttackRelease(noteObject.note, "4n");
+        };
+
+        // ТВОЙ ОСТАЛЬНОЙ КОД (JSX, обработчики событий)
+        // ВАЖНО: В твоем цикле рендеринга нот измени onClick:
+        
+        /* Было: onClick={() => playSynth(n.hz)}
+           Стало: onClick={() => playSynth(n)} 
+        */
+
+        return (
+            <div>
+                {/* Твой существующий интерфейс */}
+                {sequence.map((n, i) => (
+                    <div 
+                        key={i}
+                        className="note"
+                        onClick={() => playSynth(n)}
+                        // ... остальные пропсы
+                    >
+                        {n.f}
+                    </div>
+                ))}
+            </div>
+        );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+
 </body>
 
 </html>
