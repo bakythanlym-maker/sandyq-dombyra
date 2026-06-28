@@ -7,7 +7,7 @@
     <title>Sandyq)Dombyra AI | Dashboard</title>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <link
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@700;800&display=swap"
@@ -2747,73 +2747,6 @@
 
         ReactDOM.createRoot(document.getElementById('root')).render(<App />);
     </script>
-
-
-
-
-
-<script type="text/babel">
-    // Инициализация синтезатора "Домбра"
-    const dombraSynth = new Tone.PluckSynth({
-        attackNoise: 1,
-        dampening: 4000,
-        resonance: 0.9,
-        envelope: { attack: 0.001, decay: 0.4, release: 0.1 }
-    }).toDestination();
-
-    function App() {
-    // 1. Создаем состояние для хранения нот, которые придут с сервера
-    const [sequence, setSequence] = React.useState([]);
-    const [audioUrl, setAudioUrl] = React.useState(null);
-    const [error, setError] = React.useState(null);
-
-    // Функция воспроизведения (то, что мы добавили)
-    const playSynth = async (noteObject) => {
-        await Tone.start();
-        // Используем свойство .note, которое должно приходить с бэкенда
-        dombraSynth.triggerAttackRelease(noteObject.note, "4n");
-    };
-
-    // 2. Логика отправки файла (Твой старый fetch, который нужно внедрить)
-    const handleTranscribe = async (file) => {
-        const formData = new FormData();
-        formData.append('file', file);
-        try {
-            const response = await fetch('/transcribe', { method: 'POST', body: formData });
-            const data = await response.json();
-            if (data.sequence) {
-                setSequence(data.sequence); // Сохраняем ноты в состояние
-            }
-        } catch (e) {
-            setError("Ошибка при транскрипции");
-        }
-    };
-
-    return (
-        <div>
-            {/* Твой интерфейс загрузки файла */}
-            <input type="file" onChange={(e) => handleTranscribe(e.target.files[0])} />
-
-            {/* Отрисовка нот */}
-            <div className="timeline">
-                {sequence.map((n, i) => (
-                    <div 
-                        key={i} 
-                        className="note" 
-                        onClick={() => playSynth(n)} // Теперь это будет работать!
-                        style={{ left: `${n.t * 50}px` }} // Пример позиционирования
-                    >
-                        {n.f}
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-}
-
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-</script>
-
 </body>
 
 </html>
