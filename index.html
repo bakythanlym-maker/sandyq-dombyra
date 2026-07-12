@@ -1796,18 +1796,25 @@
                         audioCtxRef.current = new AudioContext();
                     }
                     const ctx = audioCtxRef.current;
-                    if (ctx.state === 'suspended') await ctx.resume();
+                    if (ctx.state === 'suspended') {
+                        await ctx.resume();
+                    }
                     const osc = ctx.createOscillator();
                     const gainNode = ctx.createGain();
                     osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(frequency, ctx.currentTime);
-                    gainNode.gain.setValueAtTime(0.0001, ctx.currentTime);
-                    gainNode.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 0.01);
-                    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.0);
+                    
+                    const t = ctx.currentTime + 0.01;
+                    osc.frequency.setValueAtTime(frequency, t);
+                    
+                    gainNode.gain.setValueAtTime(0, t);
+                    gainNode.gain.linearRampToValueAtTime(0.5, t + 0.02);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
+                    
                     osc.connect(gainNode);
                     gainNode.connect(ctx.destination);
-                    osc.start();
-                    osc.stop(ctx.currentTime + 1.1);
+                    
+                    osc.start(t);
+                    osc.stop(t + 1.0);
                 } catch (e) {
                     console.warn('Synth play error', e);
                 }
@@ -1935,7 +1942,6 @@
                                 const result = await response.json();
                                 if (result.frequency && result.frequency > 0) {
                                     // Optional: You can use backend result for calibration
-                                    // console.log('Backend confirmation:', result.frequency);
                                 }
                             } catch (err) {
                                 console.warn('Backend tuner (non-critical):', err);
@@ -2012,18 +2018,25 @@
             const togglePlayback = () => {
                 const newPlaying = !isPlaying;
                 setIsPlaying(newPlaying);
-                setIsSynthMode(newPlaying); // Turn on synth when playing
+                setIsSynthMode(newPlaying);
+                isPlayingRef.current = newPlaying;
+                isSynthModeRef.current = newPlaying;
 
-                if (audioRef.current && audioUrl) {
-                    if (newPlaying) {
-                        audioRef.current.muted = true; // Mute original audio so we only hear the synth
-                        audioRef.current.play().catch(() => { });
-                    }
-                    else audioRef.current.pause();
+                // IMPORTANT: Initialize/resume AudioContext on direct user click!
+                if (!audioCtxRef.current) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    audioCtxRef.current = new AudioContext();
+                }
+                if (audioCtxRef.current.state === 'suspended') {
+                    audioCtxRef.current.resume();
+                }
+
+                if (audioRef.current) {
+                    audioRef.current.pause(); // Stop original audio so it doesn't clash or block timer
                 }
 
                 if (newPlaying) {
-                    lastPlayedTimeRef.current = currentTime;
+                    lastPlayedTimeRef.current = currentTime - 0.001; // Start slightly before current time to catch notes at exactly T
                     lastTickTimeRef.current = performance.now();
                 }
             };
@@ -2032,21 +2045,17 @@
                 const now = performance.now();
 
                 if (isPlayingRef.current) {
-                    let nextTime = currentTimeRef.current;
-
-                    if (audioRef.current && !audioRef.current.paused) {
-                        nextTime = audioRef.current.currentTime;
-                    } else {
-                        const delta = (now - lastTickTimeRef.current) / 1000 * playbackSpeedRef.current;
-                        nextTime = currentTimeRef.current + delta;
-                    }
+                    // Always use delta time in synth mode, it's reliable!
+                    const delta = (now - lastTickTimeRef.current) / 1000 * playbackSpeedRef.current;
+                    let nextTime = currentTimeRef.current + delta;
 
                     if (nextTime >= audioDuration && audioDuration > 0) {
                         setIsPlaying(false);
                         setIsSynthMode(false);
+                        isPlayingRef.current = false;
+                        isSynthModeRef.current = false;
                         setCurrentTime(0);
                         lastPlayedTimeRef.current = -1;
-                        if (audioRef.current) audioRef.current.pause();
                     } else {
                         setCurrentTime(nextTime);
                         if (isSynthModeRef.current) {
