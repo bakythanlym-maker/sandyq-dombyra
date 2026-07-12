@@ -2015,7 +2015,10 @@
                 setIsSynthMode(newPlaying); // Turn on synth when playing
 
                 if (audioRef.current && audioUrl) {
-                    if (newPlaying) audioRef.current.play().catch(() => { });
+                    if (newPlaying) {
+                        audioRef.current.muted = true; // Mute original audio so we only hear the synth
+                        audioRef.current.play().catch(() => { });
+                    }
                     else audioRef.current.pause();
                 }
 
