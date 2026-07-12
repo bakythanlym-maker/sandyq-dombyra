@@ -9,6 +9,7 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <link
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@700;800&display=swap"
         rel="stylesheet">
@@ -1789,34 +1790,28 @@
 
             const activeTargetHz = tunings[tuning][selectedString.toLowerCase()];
 
-            const playSynth = async (frequency) => {
+            const synthRef = useRef(null);
+
+            useEffect(() => {
+                if (!synthRef.current && window.Tone) {
+                    synthRef.current = new window.Tone.PolySynth(window.Tone.Synth, {
+                        oscillator: { type: "triangle" },
+                        envelope: { attack: 0.01, decay: 0.5, sustain: 0, release: 0.5 }
+                    }).toDestination();
+                }
+            }, []);
+
+            const playSynth = (frequency) => {
+                if (!window.Tone) return;
                 try {
-                    if (!audioCtxRef.current) {
-                        const AudioContext = window.AudioContext || window.webkitAudioContext;
-                        audioCtxRef.current = new AudioContext();
+                    if (window.Tone.context.state !== 'running') {
+                        window.Tone.start();
                     }
-                    const ctx = audioCtxRef.current;
-                    if (ctx.state === 'suspended') {
-                        await ctx.resume();
+                    if (synthRef.current) {
+                        synthRef.current.triggerAttackRelease(frequency || 440, "8n");
                     }
-                    const osc = ctx.createOscillator();
-                    const gainNode = ctx.createGain();
-                    osc.type = 'triangle';
-                    
-                    const t = ctx.currentTime + 0.01;
-                    osc.frequency.setValueAtTime(frequency, t);
-                    
-                    gainNode.gain.setValueAtTime(0, t);
-                    gainNode.gain.linearRampToValueAtTime(0.5, t + 0.02);
-                    gainNode.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
-                    
-                    osc.connect(gainNode);
-                    gainNode.connect(ctx.destination);
-                    
-                    osc.start(t);
-                    osc.stop(t + 1.0);
                 } catch (e) {
-                    console.warn('Synth play error', e);
+                    console.warn('Tone.js play error', e);
                 }
             };
 
@@ -2023,12 +2018,8 @@
                 isSynthModeRef.current = newPlaying;
 
                 // IMPORTANT: Initialize/resume AudioContext on direct user click!
-                if (!audioCtxRef.current) {
-                    const AudioContext = window.AudioContext || window.webkitAudioContext;
-                    audioCtxRef.current = new AudioContext();
-                }
-                if (audioCtxRef.current.state === 'suspended') {
-                    audioCtxRef.current.resume();
+                if (window.Tone && window.Tone.context.state !== 'running') {
+                    window.Tone.start();
                 }
 
                 if (audioRef.current) {
@@ -2054,9 +2045,11 @@
                         setIsSynthMode(false);
                         isPlayingRef.current = false;
                         isSynthModeRef.current = false;
+                        currentTimeRef.current = 0; // INSTANT UPDATE
                         setCurrentTime(0);
                         lastPlayedTimeRef.current = -1;
                     } else {
+                        currentTimeRef.current = nextTime; // INSTANT UPDATE - CRITICAL FIX
                         setCurrentTime(nextTime);
                         if (isSynthModeRef.current) {
                             sequenceRef.current.forEach(note => {
@@ -2724,6 +2717,7 @@
                                 if (audioRef.current) {
                                     audioRef.current.currentTime = newTime;
                                 }
+                                currentTimeRef.current = newTime;
                                 setCurrentTime(newTime);
                                 lastPlayedTimeRef.current = newTime;
                             }}>
