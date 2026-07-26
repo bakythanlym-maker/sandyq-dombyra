@@ -1785,7 +1785,8 @@
             useEffect(() => { sequenceRef.current = sequence; }, [sequence]);
             useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
             useEffect(() => { isSynthModeRef.current = isSynthMode; }, [isSynthMode]);
-            useEffect(() => { currentTimeRef.current = currentTime; }, [currentTime]);
+            // Do NOT sync currentTime → currentTimeRef here. During playback the
+            // rAF loop owns the ref; a lagged setState can rewind it and skip notes.
             useEffect(() => { audioDurationRef.current = audioDuration; }, [audioDuration]);
             useEffect(() => { playbackSpeedRef.current = playbackSpeed; }, [playbackSpeed]);
             useEffect(() => { if (audioRef.current) audioRef.current.playbackRate = playbackSpeed; }, [playbackSpeed, audioUrl]);
@@ -1804,13 +1805,32 @@
 
             const activeTargetHz = tunings[tuning][selectedString.toLowerCase()];
 
+            const playNoteSoundRef = useRef(() => {});
+            const uiTimeSyncRef = useRef(0);
+
             const ensureAudioCtx = () => {
                 const AC = window.AudioContext || window.webkitAudioContext;
                 if (!AC) return null;
                 if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
                     audioCtxRef.current = new AC();
                 }
-                const ctx = audioCtxRef.current;
+                return audioCtxRef.current;
+            };
+
+            // Must run inside a click/tap handler. resume() alone is not enough on
+            // Safari/iOS — a real node has to start during the user gesture.
+            const unlockAudioEngine = () => {
+                const ctx = ensureAudioCtx();
+                if (!ctx) return null;
+                try {
+                    const buf = ctx.createBuffer(1, 1, 22050);
+                    const src = ctx.createBufferSource();
+                    src.buffer = buf;
+                    src.connect(ctx.destination);
+                    src.start(0);
+                } catch (e) {
+                    console.warn('audio unlock buffer failed:', e);
+                }
                 if (ctx.state === 'suspended') {
                     ctx.resume().catch((e) => console.warn('AudioContext resume failed:', e));
                 }
@@ -1819,38 +1839,54 @@
 
             const noteFrequency = (note) => {
                 if (!note) return 0;
-                if (typeof note.hz === 'number' && note.hz > 0) return note.hz;
-                if (typeof note.midi === 'number' && Number.isFinite(note.midi)) {
-                    return 440 * Math.pow(2, (note.midi - 69) / 12);
+                const hz = Number(note.hz);
+                if (Number.isFinite(hz) && hz > 0) return hz;
+                const midi = Number(note.midi);
+                if (Number.isFinite(midi)) return 440 * Math.pow(2, (midi - 69) / 12);
+                // Last resort: fretted pitch from open-string tuning + fret.
+                const open = note.s === 'D'
+                    ? Number(tunings[tuningRef.current]?.d)
+                    : Number(tunings[tuningRef.current]?.g);
+                const fret = Number(note.f);
+                if (Number.isFinite(open) && Number.isFinite(fret) && fret >= 0) {
+                    return open * Math.pow(2, fret / 12);
                 }
                 return 0;
             };
 
             const playSynth = (frequency) => {
-                if (!frequency || frequency <= 0) return;
+                const hz = Number(frequency);
+                if (!Number.isFinite(hz) || hz <= 0) return;
 
                 const ctx = ensureAudioCtx();
                 if (!ctx) return;
 
                 const doPlay = () => {
                     try {
-                        // Tiny lead-in only when the engine just woke up.
-                        const delay = ctx.state === 'running' ? 0.01 : 0.05;
-                        const t = ctx.currentTime + delay;
-                        const osc = ctx.createOscillator();
-                        const gain = ctx.createGain();
-                        osc.type = 'triangle';
-                        osc.frequency.setValueAtTime(frequency, t);
-                        gain.gain.setValueAtTime(0.28, t);
-                        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
-                        osc.connect(gain);
-                        gain.connect(ctx.destination);
-                        osc.start(t);
-                        osc.stop(t + 0.65);
-                        osc.onended = () => {
-                            try { gain.disconnect(); } catch (_) {}
-                            try { osc.disconnect(); } catch (_) {}
-                        };
+                        const t = ctx.currentTime;
+                        const master = ctx.createGain();
+                        master.gain.setValueAtTime(0.0001, t);
+                        master.gain.linearRampToValueAtTime(0.45, t + 0.01);
+                        master.gain.linearRampToValueAtTime(0.001, t + 0.55);
+                        master.connect(ctx.destination);
+
+                        // Slightly richer pluck so notes cut through the song.
+                        [[1, 0.9, 'triangle'], [2, 0.22, 'sine'], [3, 0.1, 'sine']].forEach(([mult, vol, type]) => {
+                            const osc = ctx.createOscillator();
+                            const g = ctx.createGain();
+                            osc.type = type;
+                            osc.frequency.setValueAtTime(hz * mult, t);
+                            g.gain.setValueAtTime(vol, t);
+                            osc.connect(g);
+                            g.connect(master);
+                            osc.start(t);
+                            osc.stop(t + 0.6);
+                            osc.onended = () => {
+                                try { g.disconnect(); } catch (_) {}
+                                try { osc.disconnect(); } catch (_) {}
+                            };
+                        });
+                        setTimeout(() => { try { master.disconnect(); } catch (_) {} }, 700);
                     } catch (e) {
                         console.warn('playSynth doPlay error:', e.message);
                     }
@@ -1861,20 +1897,19 @@
                 } else {
                     ctx.resume().then(doPlay).catch((e) => {
                         console.warn('resume error:', e);
-                        if (ctx.state === 'closed') {
-                            audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-                            audioCtxRef.current.resume().then(doPlay).catch((err) => console.warn('playSynth retry error:', err));
-                        }
+                        unlockAudioEngine();
+                        const again = ensureAudioCtx();
+                        if (again) again.resume().then(doPlay).catch((err) => console.warn('playSynth retry error:', err));
                     });
                 }
             };
 
-            // Synth-only note sound (no sample files — Firebase rewrite used to
-            // serve index.html for missing .m4a and silently mute playback).
+            // Synth-only (no sample files — missing .m4a was rewritten to HTML on hosting).
             const playNoteSound = (note) => {
                 const hz = noteFrequency(note);
                 if (hz > 0) playSynth(hz);
             };
+            playNoteSoundRef.current = playNoteSound;
 
             const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
             const getNoteFromFrequency = (frequency) => {
@@ -2078,16 +2113,18 @@
                 lastTickTimeRef.current = performance.now();
 
                 if (newPlaying) {
-                    // Unlock Web Audio on the same user gesture, otherwise
-                    // note synth stays silent while <audio> still plays.
-                    ensureAudioCtx();
+                    // Unlock Web Audio in THIS click, before rAF tries to synth.
+                    unlockAudioEngine();
                     lastPlayedTimeRef.current = currentTimeRef.current - 0.001;
                     if (audioRef.current) {
+                        // Duck the song a bit so note tones stay audible on top.
+                        audioRef.current.volume = 0.55;
                         audioRef.current.currentTime = currentTimeRef.current;
                         audioRef.current.play().catch((e) => console.warn('audio play error:', e));
                     }
                 } else if (audioRef.current) {
                     audioRef.current.pause();
+                    audioRef.current.volume = 1;
                 }
             };
 
@@ -2102,7 +2139,7 @@
                         nextTime = audioEl.currentTime;
                     } else {
                         const delta = (now - lastTickTimeRef.current) / 1000 * playbackSpeedRef.current;
-                        nextTime = currentTimeRef.current + delta;
+                        nextTime = currentTimeRef.current + Math.max(0, delta);
                     }
                     const dur = audioDurationRef.current;
 
@@ -2115,20 +2152,35 @@
                         setCurrentTime(0);
                         lastPlayedTimeRef.current = -1;
                         if (audioEl) {
-                            try { audioEl.pause(); audioEl.currentTime = 0; } catch (_) {}
+                            try {
+                                audioEl.pause();
+                                audioEl.currentTime = 0;
+                                audioEl.volume = 1;
+                            } catch (_) {}
                         }
                     } else {
                         const prev = lastPlayedTimeRef.current;
-                        const notes = sequenceRef.current || [];
-                        for (let i = 0; i < notes.length; i++) {
-                            const note = notes[i];
-                            if (typeof note.t === 'number' && note.t > prev && note.t <= nextTime) {
-                                playNoteSound(note);
+                        // Guard against clock rewind (seek / lag) re-triggering a burst.
+                        if (nextTime + 0.0005 < prev) {
+                            lastPlayedTimeRef.current = nextTime - 0.001;
+                        } else {
+                            const notes = sequenceRef.current || [];
+                            const play = playNoteSoundRef.current;
+                            for (let i = 0; i < notes.length; i++) {
+                                const note = notes[i];
+                                const t = Number(note.t);
+                                if (Number.isFinite(t) && t > prev && t <= nextTime) {
+                                    play(note);
+                                }
                             }
+                            lastPlayedTimeRef.current = nextTime;
                         }
                         currentTimeRef.current = nextTime;
-                        setCurrentTime(nextTime);
-                        lastPlayedTimeRef.current = nextTime;
+                        // Throttle React re-renders — 60 setState/sec was fighting the clock.
+                        if (now - uiTimeSyncRef.current > 66) {
+                            uiTimeSyncRef.current = now;
+                            setCurrentTime(nextTime);
+                        }
                     }
                 }
 
@@ -2472,7 +2524,10 @@
                                         </thead>
                                         <tbody>
                                             {sequence.length > 0 ? sequence.map((n, i) => (
-                                                <tr key={i}>
+                                                <tr key={i}
+                                                    onClick={() => { unlockAudioEngine(); playNoteSound(n); }}
+                                                    style={{ cursor: 'pointer' }}
+                                                    title={`${n.note || ''} — дыбысты тыңдау`}>
                                                     <td>{String(i + 1).padStart(2, '0')}</td>
                                                     <td>{n.t.toFixed(2)}s</td>
                                                     <td>{n.s}</td>
@@ -2809,6 +2864,7 @@
                                         style={{ left: n.t * PIXELS_PER_SECOND, top: n.s === 'G' ? G_STRING_Y : D_STRING_Y, width: Math.max(40, (n.dur / 1000) * PIXELS_PER_SECOND) }}
                                         onClick={(e) => {
                                             e.stopPropagation();
+                                            unlockAudioEngine();
                                             playNoteSound(n);
                                         }}
                                         onTouchStart={(e) => {
@@ -2816,6 +2872,7 @@
                                             // does not ring twice on phones.
                                             e.preventDefault();
                                             e.stopPropagation();
+                                            unlockAudioEngine();
                                             playNoteSound(n);
                                         }}
                                         title={`${n.note} (${n.hz}Hz) @ ${n.t.toFixed(2)}s`}>
