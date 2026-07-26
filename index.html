@@ -1797,7 +1797,7 @@
 
             const activeTargetHz = tunings[tuning][selectedString.toLowerCase()];
 
-            const playSynth = (frequency) => {
+            const playSynth = (frequency, volume = 0.3) => {
                 if (!frequency || frequency <= 0) return;
                 
                 const AC = window.AudioContext || window.webkitAudioContext;
@@ -1814,7 +1814,7 @@
                         const gain = ctx.createGain();
                         osc.type = 'triangle';
                         osc.frequency.setValueAtTime(frequency, t);
-                        gain.gain.setValueAtTime(0.3, t);
+                        gain.gain.setValueAtTime(volume, t);
                         gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
                         osc.connect(gain);
                         gain.connect(ctx.destination);
@@ -1841,6 +1841,13 @@
                         }
                     });
                 }
+            };
+
+            // Notes are played over the original track, so they need more level than the tuner tone.
+            const playNote = (note) => {
+                if (!note) return;
+                const hz = note.hz > 0 ? note.hz : 440 * Math.pow(2, (note.midi - 69) / 12);
+                playSynth(hz, 0.5);
             };
 
             const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -2044,8 +2051,23 @@
                 isPlayingRef.current = newPlaying;
                 lastTickTimeRef.current = performance.now();
 
+                if (newPlaying) {
+                    // The click is the user gesture that unlocks audio — wake the
+                    // context here, otherwise the first notes stay silent.
+                    const AC = window.AudioContext || window.webkitAudioContext;
+                    if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+                        audioCtxRef.current = new AC();
+                    }
+                    if (audioCtxRef.current.state !== 'running') {
+                        audioCtxRef.current.resume().catch(e => console.warn('resume error:', e));
+                    }
+                    lastPlayedTimeRef.current = currentTimeRef.current - 0.001;
+                }
+
                 if (audioRef.current) {
                     if (newPlaying) {
+                        // Duck the original track so the note tones stay audible on top of it.
+                        audioRef.current.volume = 0.4;
                         audioRef.current.currentTime = currentTimeRef.current;
                         audioRef.current.play().catch(e => console.warn('audio play error:', e));
                     } else {
@@ -2073,6 +2095,12 @@
                     } else {
                         currentTimeRef.current = nextTime;
                         setCurrentTime(nextTime);
+                        const notes = sequenceRef.current || [];
+                        for (let i = 0; i < notes.length; i++) {
+                            if (notes[i].t > lastPlayedTimeRef.current && notes[i].t <= nextTime) {
+                                playNote(notes[i]);
+                            }
+                        }
                         lastPlayedTimeRef.current = nextTime;
                     }
                 }
@@ -2752,6 +2780,8 @@
                                 {sequence.map((n, i) => (
                                     <div key={i} className={`note-block ${n.s === 'G' ? 'string-g' : 'string-d'} ${currentTime >= n.t && currentTime <= n.t + (n.dur / 1000) ? 'active' : ''}`}
                                         style={{ left: n.t * PIXELS_PER_SECOND, top: n.s === 'G' ? G_STRING_Y : D_STRING_Y, width: Math.max(40, (n.dur / 1000) * PIXELS_PER_SECOND) }}
+                                        onClick={() => playNote(n)}
+                                        onTouchStart={(e) => { e.preventDefault(); playNote(n); }}
                                         title={`${n.note} (${n.hz}Hz) @ ${n.t.toFixed(2)}s`}>
                                         <span style={{ fontSize: '14px' }}>{n.f}</span>
                                         {(n.dur / 1000) * PIXELS_PER_SECOND > 60 && (
