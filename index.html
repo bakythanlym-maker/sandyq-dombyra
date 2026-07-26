@@ -1844,16 +1844,9 @@
             };
 
             const playSample = (note) => {
-                if (!note || typeof note.f !== 'number' || !note.s) {
-                    return playSynth(note?.hz);
-                }
-                const samplePath = new URL(`./samples/${note.s}/${note.f}.m4a`, window.location.href).href;
-                const audio = new Audio(samplePath);
-                audio.volume = 0.85;
-                audio.play().catch(err => {
-                    console.warn('sample play failed, fallback to synth', err);
-                    playSynth(note.hz);
-                });
+                if (!note) return;
+                const hz = note.hz > 0 ? note.hz : 440 * Math.pow(2, (note.midi - 69) / 12);
+                playSynth(hz);
             };
 
             const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
