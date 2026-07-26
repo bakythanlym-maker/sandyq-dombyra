@@ -1817,18 +1817,103 @@
                 return ctx;
             };
 
+            // Open-string Hz for current tuning → map any note to nearest dombyra sample.
+            const resolveDombyraFingering = (note) => {
+                if (!note) return null;
+                if (typeof note.f === 'number' && (note.s === 'D' || note.s === 'G')) {
+                    return { s: note.s, f: Math.max(0, Math.min(19, Math.round(note.f))), hz: note.hz };
+                }
+                const baseD = tunings[tuningRef.current || tuning].d;
+                const baseG = tunings[tuningRef.current || tuning].g;
+                const hz = note.hz || (typeof note.midi === 'number'
+                    ? 440 * Math.pow(2, (note.midi - 69) / 12)
+                    : 0);
+                if (!hz || hz <= 0) return null;
+
+                let best = null;
+                let bestErr = Infinity;
+                [['D', baseD], ['G', baseG]].forEach(([s, baseHz]) => {
+                    for (let f = 0; f <= 19; f++) {
+                        const sampleHz = baseHz * Math.pow(2, f / 12);
+                        const err = Math.abs(Math.log2(sampleHz / hz));
+                        if (err < bestErr) {
+                            bestErr = err;
+                            best = { s, f, hz: sampleHz };
+                        }
+                    }
+                });
+                return best;
+            };
+
+            const sampleUrl = (stringName, fret, ext) =>
+                new URL(`./samples/${stringName}/${fret}.${ext}`, window.location.href).href;
+
+            const playHtmlSample = (url) => new Promise((resolve, reject) => {
+                const audio = new Audio();
+                audio.preload = 'auto';
+                audio.volume = 0.95;
+                let settled = false;
+                const finish = (err) => {
+                    if (settled) return;
+                    settled = true;
+                    if (err) reject(err);
+                    else resolve();
+                };
+                audio.onerror = () => finish(new Error('audio element error'));
+                audio.oncanplay = () => {
+                    audio.play().then(() => finish()).catch(finish);
+                };
+                audio.src = url;
+                audio.load();
+                setTimeout(() => {
+                    if (!settled) {
+                        audio.play().then(() => finish()).catch(finish);
+                    }
+                }, 200);
+            });
+
+            const playBufferSample = async (stringName, fret, { play = true } = {}) => {
+                const ctx = await ensureAudioCtx();
+                const key = `${stringName}/${fret}`;
+                let buf = sampleCacheRef.current[key];
+                if (!buf) {
+                    let lastErr = null;
+                    for (const ext of ['wav', 'm4a']) {
+                        try {
+                            const res = await fetch(sampleUrl(stringName, fret, ext));
+                            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                            const arr = await res.arrayBuffer();
+                            buf = await ctx.decodeAudioData(arr.slice(0));
+                            sampleCacheRef.current[key] = buf;
+                            lastErr = null;
+                            break;
+                        } catch (e) {
+                            lastErr = e;
+                        }
+                    }
+                    if (!buf) throw lastErr || new Error('no sample');
+                }
+                if (!play) return buf;
+                const src = ctx.createBufferSource();
+                const gain = ctx.createGain();
+                src.buffer = buf;
+                gain.gain.value = 0.95;
+                src.connect(gain);
+                gain.connect(ctx.destination);
+                src.start(0);
+            };
+
+            // Last-resort soft tone — only if real samples unavailable.
             const playSynth = async (frequency, durationSec = 0.55) => {
                 if (!frequency || frequency <= 0) return;
                 const ctx = await ensureAudioCtx();
                 const t0 = ctx.currentTime;
                 const master = ctx.createGain();
                 master.gain.setValueAtTime(0.0001, t0);
-                master.gain.exponentialRampToValueAtTime(0.28, t0 + 0.01);
+                master.gain.exponentialRampToValueAtTime(0.22, t0 + 0.008);
                 master.gain.exponentialRampToValueAtTime(0.0001, t0 + durationSec);
                 master.connect(ctx.destination);
-
-                // Soft plucked-string-ish tone (fundamental + quiet harmonics)
-                [[1, 0.55], [2, 0.18], [3, 0.08]].forEach(([mult, vol]) => {
+                [[1, 0.55], [2, 0.16], [3, 0.07]].forEach(([mult, vol]) => {
                     const osc = ctx.createOscillator();
                     const g = ctx.createGain();
                     osc.type = mult === 1 ? 'triangle' : 'sine';
@@ -1841,41 +1926,45 @@
                 });
             };
 
-            const loadSampleBuffer = async (stringName, fret) => {
-                const key = `${stringName}/${fret}`;
-                if (sampleCacheRef.current[key]) return sampleCacheRef.current[key];
-                const ctx = await ensureAudioCtx();
-                const url = new URL(`./samples/${stringName}/${fret}.m4a`, window.location.href).href;
-                const res = await fetch(url);
-                if (!res.ok) throw new Error(`sample missing ${key}`);
-                const arr = await res.arrayBuffer();
-                const buf = await ctx.decodeAudioData(arr.slice(0));
-                sampleCacheRef.current[key] = buf;
-                return buf;
+            const playSample = async (note) => {
+                const fingering = resolveDombyraFingering(note);
+                if (!fingering) return;
+
+                // Prefer decoded real dombyra sample (wav) — true instrument timbre
+                try {
+                    await playBufferSample(fingering.s, fingering.f, { play: true });
+                    return;
+                } catch (e0) {
+                    console.warn('buffer sample failed', e0);
+                }
+                try {
+                    await playHtmlSample(sampleUrl(fingering.s, fingering.f, 'wav'));
+                    return;
+                } catch (e1) {
+                    console.warn('wav html failed', e1);
+                }
+                try {
+                    await playHtmlSample(sampleUrl(fingering.s, fingering.f, 'm4a'));
+                    return;
+                } catch (e2) {
+                    console.warn('m4a html failed', e2);
+                }
+                await playSynth(fingering.hz || note.hz, 0.55);
             };
 
-            const playSample = async (note) => {
-                if (!note) return;
-                const hz = note.hz || (note.midi ? 440 * Math.pow(2, (note.midi - 69) / 12) : 0);
-                const dur = Math.min(1.2, Math.max(0.35, (note.dur || 400) / 1000));
-
-                if (typeof note.f === 'number' && note.s) {
+            const preloadSequenceSamples = async (notes) => {
+                if (!notes || !notes.length) return;
+                const seen = new Set();
+                for (const n of notes) {
+                    const fingering = resolveDombyraFingering(n);
+                    if (!fingering) continue;
+                    const key = `${fingering.s}/${fingering.f}`;
+                    if (seen.has(key) || sampleCacheRef.current[key]) continue;
+                    seen.add(key);
                     try {
-                        const ctx = await ensureAudioCtx();
-                        const buf = await loadSampleBuffer(note.s, note.f);
-                        const src = ctx.createBufferSource();
-                        const gain = ctx.createGain();
-                        src.buffer = buf;
-                        gain.gain.value = 0.9;
-                        src.connect(gain);
-                        gain.connect(ctx.destination);
-                        src.start(0);
-                        return;
-                    } catch (err) {
-                        console.warn('sample play failed, synth fallback', err);
-                    }
+                        await playBufferSample(fingering.s, fingering.f, { play: false });
+                    } catch (e) { /* preload best-effort */ }
                 }
-                await playSynth(hz, dur);
             };
 
             const playNoteSound = (note, event) => {
@@ -2204,6 +2293,7 @@
                     console.log('Received sequence:', data.sequence?.length, 'notes');
                     setSequence(data.sequence || []);
                     setAudioDuration(data.duration || 0);
+                    preloadSequenceSamples(data.sequence || []);
 
                     if (data.sequence && data.sequence.length > 0) {
                         const newEntry = {
@@ -2322,6 +2412,7 @@
                 setIsPlaying(false);
                 setIsSynthMode(false);
                 lastPlayedTimeRef.current = -1;
+                preloadSequenceSamples(entry.sequence || []);
             };
 
             const formatTime = (s) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
