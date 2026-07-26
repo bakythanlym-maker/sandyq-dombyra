@@ -1843,12 +1843,6 @@
                 }
             };
 
-            const playSample = (note) => {
-                if (!note) return;
-                const hz = note.hz > 0 ? note.hz : 440 * Math.pow(2, (note.midi - 69) / 12);
-                playSynth(hz);
-            };
-
             const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
             const getNoteFromFrequency = (frequency) => {
                 if (frequency <= 0) return { note: '---', cents: 0, freq: 0, targetHz: 0 };
@@ -2047,31 +2041,16 @@
             const togglePlayback = () => {
                 const newPlaying = !isPlaying;
                 setIsPlaying(newPlaying);
-                setIsSynthMode(newPlaying);
                 isPlayingRef.current = newPlaying;
-                isSynthModeRef.current = newPlaying;
-
-                if (newPlaying) {
-                    // Create a FRESH AudioContext on every Play click (user gesture = unlocked)
-                    // Close old one first to avoid memory leaks
-                    if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
-                        try { audioCtxRef.current.close(); } catch(e) {}
-                    }
-                    const AC = window.AudioContext || window.webkitAudioContext;
-                    audioCtxRef.current = new AC();
-                    // Play a silent buffer immediately to "warm up" the audio engine
-                    const buf = audioCtxRef.current.createBuffer(1, 1, 22050);
-                    const src = audioCtxRef.current.createBufferSource();
-                    src.buffer = buf;
-                    src.connect(audioCtxRef.current.destination);
-                    src.start(0);
-
-                    lastPlayedTimeRef.current = currentTime - 0.001;
-                    lastTickTimeRef.current = performance.now();
-                }
+                lastTickTimeRef.current = performance.now();
 
                 if (audioRef.current) {
-                    audioRef.current.pause();
+                    if (newPlaying) {
+                        audioRef.current.currentTime = currentTimeRef.current;
+                        audioRef.current.play().catch(e => console.warn('audio play error:', e));
+                    } else {
+                        audioRef.current.pause();
+                    }
                 }
             };
 
@@ -2094,14 +2073,6 @@
                     } else {
                         currentTimeRef.current = nextTime;
                         setCurrentTime(nextTime);
-                        const notes = sequenceRef.current;
-                        for (let i = 0; i < notes.length; i++) {
-                            const note = notes[i];
-                            if (note.t > lastPlayedTimeRef.current && note.t <= nextTime) {
-                                console.log('PLAY NOTE:', note.hz, 'Hz at t=', note.t.toFixed(3), 'nextTime=', nextTime.toFixed(3));
-                                playSample(note);
-                            }
-                        }
                         lastPlayedTimeRef.current = nextTime;
                     }
                 }
@@ -2781,8 +2752,6 @@
                                 {sequence.map((n, i) => (
                                     <div key={i} className={`note-block ${n.s === 'G' ? 'string-g' : 'string-d'} ${currentTime >= n.t && currentTime <= n.t + (n.dur / 1000) ? 'active' : ''}`}
                                         style={{ left: n.t * PIXELS_PER_SECOND, top: n.s === 'G' ? G_STRING_Y : D_STRING_Y, width: Math.max(40, (n.dur / 1000) * PIXELS_PER_SECOND) }}
-                                        onClick={() => playSynth(n.hz)}
-                                        onTouchStart={(e) => { e.preventDefault(); playSynth(n.hz); }}
                                         title={`${n.note} (${n.hz}Hz) @ ${n.t.toFixed(2)}s`}>
                                         <span style={{ fontSize: '14px' }}>{n.f}</span>
                                         {(n.dur / 1000) * PIXELS_PER_SECOND > 60 && (
