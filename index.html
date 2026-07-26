@@ -1288,6 +1288,13 @@
             transform: translateY(-50%);
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 2;
+            cursor: pointer;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .note-block:active {
+            transform: translateY(-50%) scale(0.96);
         }
 
         @media (min-width: 768px) {
@@ -1797,57 +1804,76 @@
 
             const activeTargetHz = tunings[tuning][selectedString.toLowerCase()];
 
-            const playSynth = (frequency, volume = 0.3) => {
-                if (!frequency || frequency <= 0) return;
-                
+            const ensureAudioCtx = () => {
                 const AC = window.AudioContext || window.webkitAudioContext;
+                if (!AC) return null;
                 if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
                     audioCtxRef.current = new AC();
                 }
                 const ctx = audioCtxRef.current;
-                
+                if (ctx.state === 'suspended') {
+                    ctx.resume().catch((e) => console.warn('AudioContext resume failed:', e));
+                }
+                return ctx;
+            };
+
+            const noteFrequency = (note) => {
+                if (!note) return 0;
+                if (typeof note.hz === 'number' && note.hz > 0) return note.hz;
+                if (typeof note.midi === 'number' && Number.isFinite(note.midi)) {
+                    return 440 * Math.pow(2, (note.midi - 69) / 12);
+                }
+                return 0;
+            };
+
+            const playSynth = (frequency) => {
+                if (!frequency || frequency <= 0) return;
+
+                const ctx = ensureAudioCtx();
+                if (!ctx) return;
+
                 const doPlay = () => {
                     try {
-                        const delay = 0.05; // small delay so audio engine is ready
+                        // Tiny lead-in only when the engine just woke up.
+                        const delay = ctx.state === 'running' ? 0.01 : 0.05;
                         const t = ctx.currentTime + delay;
                         const osc = ctx.createOscillator();
                         const gain = ctx.createGain();
                         osc.type = 'triangle';
                         osc.frequency.setValueAtTime(frequency, t);
-                        gain.gain.setValueAtTime(volume, t);
-                        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+                        gain.gain.setValueAtTime(0.28, t);
+                        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
                         osc.connect(gain);
                         gain.connect(ctx.destination);
                         osc.start(t);
-                        osc.stop(t + 0.7);
+                        osc.stop(t + 0.65);
                         osc.onended = () => {
-                            gain.disconnect();
-                            osc.disconnect();
+                            try { gain.disconnect(); } catch (_) {}
+                            try { osc.disconnect(); } catch (_) {}
                         };
                     } catch (e) {
                         console.warn('playSynth doPlay error:', e.message);
                     }
                 };
-                
+
                 if (ctx.state === 'running') {
                     doPlay();
                 } else {
-                    // resume is async - play after it resolves
-                    ctx.resume().then(doPlay).catch(e => {
+                    ctx.resume().then(doPlay).catch((e) => {
                         console.warn('resume error:', e);
                         if (ctx.state === 'closed') {
-                            audioCtxRef.current = new AC();
-                            audioCtxRef.current.resume().then(doPlay).catch(err => console.warn('playSynth retry error:', err));
+                            audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+                            audioCtxRef.current.resume().then(doPlay).catch((err) => console.warn('playSynth retry error:', err));
                         }
                     });
                 }
             };
 
-            // Notes are played over the original track, so they need more level than the tuner tone.
-            const playNote = (note) => {
-                if (!note) return;
-                const hz = note.hz > 0 ? note.hz : 440 * Math.pow(2, (note.midi - 69) / 12);
-                playSynth(hz, 0.5);
+            // Synth-only note sound (no sample files — Firebase rewrite used to
+            // serve index.html for missing .m4a and silently mute playback).
+            const playNoteSound = (note) => {
+                const hz = noteFrequency(note);
+                if (hz > 0) playSynth(hz);
             };
 
             const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -2052,27 +2078,16 @@
                 lastTickTimeRef.current = performance.now();
 
                 if (newPlaying) {
-                    // The click is the user gesture that unlocks audio — wake the
-                    // context here, otherwise the first notes stay silent.
-                    const AC = window.AudioContext || window.webkitAudioContext;
-                    if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
-                        audioCtxRef.current = new AC();
-                    }
-                    if (audioCtxRef.current.state !== 'running') {
-                        audioCtxRef.current.resume().catch(e => console.warn('resume error:', e));
-                    }
+                    // Unlock Web Audio on the same user gesture, otherwise
+                    // note synth stays silent while <audio> still plays.
+                    ensureAudioCtx();
                     lastPlayedTimeRef.current = currentTimeRef.current - 0.001;
-                }
-
-                if (audioRef.current) {
-                    if (newPlaying) {
-                        // Duck the original track so the note tones stay audible on top of it.
-                        audioRef.current.volume = 0.4;
+                    if (audioRef.current) {
                         audioRef.current.currentTime = currentTimeRef.current;
-                        audioRef.current.play().catch(e => console.warn('audio play error:', e));
-                    } else {
-                        audioRef.current.pause();
+                        audioRef.current.play().catch((e) => console.warn('audio play error:', e));
                     }
+                } else if (audioRef.current) {
+                    audioRef.current.pause();
                 }
             };
 
@@ -2080,11 +2095,18 @@
                 const now = performance.now();
 
                 if (isPlayingRef.current) {
-                    const delta = (now - lastTickTimeRef.current) / 1000 * playbackSpeedRef.current;
-                    let nextTime = currentTimeRef.current + delta;
-                    const dur = audioDurationRef.current; // Always use ref, not stale closure!
+                    const audioEl = audioRef.current;
+                    let nextTime;
+                    // Prefer the real media clock so note attacks stay on the song.
+                    if (audioEl && !audioEl.paused && !audioEl.ended && Number.isFinite(audioEl.currentTime)) {
+                        nextTime = audioEl.currentTime;
+                    } else {
+                        const delta = (now - lastTickTimeRef.current) / 1000 * playbackSpeedRef.current;
+                        nextTime = currentTimeRef.current + delta;
+                    }
+                    const dur = audioDurationRef.current;
 
-                    if (dur > 0 && nextTime >= dur) {
+                    if ((dur > 0 && nextTime >= dur) || (audioEl && audioEl.ended)) {
                         setIsPlaying(false);
                         setIsSynthMode(false);
                         isPlayingRef.current = false;
@@ -2092,15 +2114,20 @@
                         currentTimeRef.current = 0;
                         setCurrentTime(0);
                         lastPlayedTimeRef.current = -1;
+                        if (audioEl) {
+                            try { audioEl.pause(); audioEl.currentTime = 0; } catch (_) {}
+                        }
                     } else {
-                        currentTimeRef.current = nextTime;
-                        setCurrentTime(nextTime);
+                        const prev = lastPlayedTimeRef.current;
                         const notes = sequenceRef.current || [];
                         for (let i = 0; i < notes.length; i++) {
-                            if (notes[i].t > lastPlayedTimeRef.current && notes[i].t <= nextTime) {
-                                playNote(notes[i]);
+                            const note = notes[i];
+                            if (typeof note.t === 'number' && note.t > prev && note.t <= nextTime) {
+                                playNoteSound(note);
                             }
                         }
+                        currentTimeRef.current = nextTime;
+                        setCurrentTime(nextTime);
                         lastPlayedTimeRef.current = nextTime;
                     }
                 }
@@ -2780,8 +2807,17 @@
                                 {sequence.map((n, i) => (
                                     <div key={i} className={`note-block ${n.s === 'G' ? 'string-g' : 'string-d'} ${currentTime >= n.t && currentTime <= n.t + (n.dur / 1000) ? 'active' : ''}`}
                                         style={{ left: n.t * PIXELS_PER_SECOND, top: n.s === 'G' ? G_STRING_Y : D_STRING_Y, width: Math.max(40, (n.dur / 1000) * PIXELS_PER_SECOND) }}
-                                        onClick={() => playNote(n)}
-                                        onTouchStart={(e) => { e.preventDefault(); playNote(n); }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            playNoteSound(n);
+                                        }}
+                                        onTouchStart={(e) => {
+                                            // preventDefault blocks the follow-up click so the note
+                                            // does not ring twice on phones.
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            playNoteSound(n);
+                                        }}
                                         title={`${n.note} (${n.hz}Hz) @ ${n.t.toFixed(2)}s`}>
                                         <span style={{ fontSize: '14px' }}>{n.f}</span>
                                         {(n.dur / 1000) * PIXELS_PER_SECOND > 60 && (
