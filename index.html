@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sandyq)Dombyra AI | Dashboard</title>
+    <title>Sandyq)Dombyra AI</title>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1288,6 +1288,13 @@
             transform: translateY(-50%);
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 2;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .note-block:active {
+            transform: translateY(-50%) scale(0.96);
+            filter: brightness(1.12);
         }
 
         @media (min-width: 768px) {
@@ -1649,8 +1656,13 @@
     <script type="text/babel">
         const { useState, useRef, useEffect } = React;
         const getBackendBaseUrl = () => {
-            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                return 'http://localhost:8000';
+            const override = localStorage.getItem('dombyra_backend_url');
+            if (override) return override;
+
+            const host = window.location.hostname || '';
+            const isLocalHost = window.location.protocol === 'file:' || host === '' || host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
+            if (isLocalHost) {
+                return 'http://127.0.0.1:8000';
             }
             return 'https://nurmaaq-my-sandyq-dombyra.hf.space';
         };
@@ -1719,6 +1731,7 @@
             const audioCtxRef = useRef(null);
             const sequenceRef = useRef([]);
             const lastPlayedTimeRef = useRef(-1);
+            const sampleCacheRef = useRef({});
             const mediaRecorderRef = useRef(null);
             const audioChunksRef = useRef([]);
             const timerRef = useRef(null);
@@ -1766,6 +1779,7 @@
             const isPlayingRef = useRef(false);
             const isSynthModeRef = useRef(false);
             const currentTimeRef = useRef(0);
+            const audioDurationRef = useRef(0);
             const playbackSpeedRef = useRef(playbackSpeed);
             const lastTickTimeRef = useRef(0);
 
@@ -1773,6 +1787,7 @@
             useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
             useEffect(() => { isSynthModeRef.current = isSynthMode; }, [isSynthMode]);
             useEffect(() => { currentTimeRef.current = currentTime; }, [currentTime]);
+            useEffect(() => { audioDurationRef.current = audioDuration; }, [audioDuration]);
             useEffect(() => { playbackSpeedRef.current = playbackSpeed; }, [playbackSpeed]);
             useEffect(() => { if (audioRef.current) audioRef.current.playbackRate = playbackSpeed; }, [playbackSpeed, audioUrl]);
             useEffect(() => { selectedStringRef.current = selectedString; }, [selectedString]);
@@ -1790,29 +1805,91 @@
 
             const activeTargetHz = tunings[tuning][selectedString.toLowerCase()];
 
-            const synthRef = useRef(null);
-
-            useEffect(() => {
-                if (!synthRef.current && window.Tone) {
-                    synthRef.current = new window.Tone.PolySynth(window.Tone.Synth, {
-                        oscillator: { type: "triangle" },
-                        envelope: { attack: 0.01, decay: 0.5, sustain: 0, release: 0.5 }
-                    }).toDestination();
+            const ensureAudioCtx = async () => {
+                const AC = window.AudioContext || window.webkitAudioContext;
+                if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+                    audioCtxRef.current = new AC();
                 }
-            }, []);
-
-            const playSynth = (frequency) => {
-                if (!window.Tone) return;
-                try {
-                    if (window.Tone.context.state !== 'running') {
-                        window.Tone.start();
-                    }
-                    if (synthRef.current) {
-                        synthRef.current.triggerAttackRelease(frequency || 440, "8n");
-                    }
-                } catch (e) {
-                    console.warn('Tone.js play error', e);
+                const ctx = audioCtxRef.current;
+                if (ctx.state === 'suspended') {
+                    try { await ctx.resume(); } catch (e) { console.warn('audio resume failed', e); }
                 }
+                return ctx;
+            };
+
+            const playSynth = async (frequency, durationSec = 0.55) => {
+                if (!frequency || frequency <= 0) return;
+                const ctx = await ensureAudioCtx();
+                const t0 = ctx.currentTime;
+                const master = ctx.createGain();
+                master.gain.setValueAtTime(0.0001, t0);
+                master.gain.exponentialRampToValueAtTime(0.28, t0 + 0.01);
+                master.gain.exponentialRampToValueAtTime(0.0001, t0 + durationSec);
+                master.connect(ctx.destination);
+
+                // Soft plucked-string-ish tone (fundamental + quiet harmonics)
+                [[1, 0.55], [2, 0.18], [3, 0.08]].forEach(([mult, vol]) => {
+                    const osc = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    osc.type = mult === 1 ? 'triangle' : 'sine';
+                    osc.frequency.setValueAtTime(frequency * mult, t0);
+                    g.gain.setValueAtTime(vol, t0);
+                    osc.connect(g);
+                    g.connect(master);
+                    osc.start(t0);
+                    osc.stop(t0 + durationSec + 0.05);
+                });
+            };
+
+            const loadSampleBuffer = async (stringName, fret) => {
+                const key = `${stringName}/${fret}`;
+                if (sampleCacheRef.current[key]) return sampleCacheRef.current[key];
+                const ctx = await ensureAudioCtx();
+                const url = new URL(`./samples/${stringName}/${fret}.m4a`, window.location.href).href;
+                const res = await fetch(url);
+                if (!res.ok) throw new Error(`sample missing ${key}`);
+                const arr = await res.arrayBuffer();
+                const buf = await ctx.decodeAudioData(arr.slice(0));
+                sampleCacheRef.current[key] = buf;
+                return buf;
+            };
+
+            const playSample = async (note) => {
+                if (!note) return;
+                const hz = note.hz || (note.midi ? 440 * Math.pow(2, (note.midi - 69) / 12) : 0);
+                const dur = Math.min(1.2, Math.max(0.35, (note.dur || 400) / 1000));
+
+                if (typeof note.f === 'number' && note.s) {
+                    try {
+                        const ctx = await ensureAudioCtx();
+                        const buf = await loadSampleBuffer(note.s, note.f);
+                        const src = ctx.createBufferSource();
+                        const gain = ctx.createGain();
+                        src.buffer = buf;
+                        gain.gain.value = 0.9;
+                        src.connect(gain);
+                        gain.connect(ctx.destination);
+                        src.start(0);
+                        return;
+                    } catch (err) {
+                        console.warn('sample play failed, synth fallback', err);
+                    }
+                }
+                await playSynth(hz, dur);
+            };
+
+            const playNoteSound = (note, event) => {
+                if (event) {
+                    event.stopPropagation();
+                    event.preventDefault();
+                }
+                playSample(note);
+            };
+
+            const getSequenceEndTime = () => {
+                const notes = sequenceRef.current || [];
+                const fromNotes = notes.reduce((max, n) => Math.max(max, (n.t || 0) + ((n.dur || 300) / 1000)), 0);
+                return Math.max(audioDurationRef.current || 0, fromNotes, 0.5) + 0.25;
             };
 
             const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -2010,25 +2087,46 @@
                 return () => stopTuner();
             }, [activeTab]);
 
-            const togglePlayback = () => {
+            const togglePlayback = async () => {
+                if (!sequenceRef.current.length) {
+                    alert('Алдымен аудио жүктеңіз немесе ноталар керек');
+                    return;
+                }
+
                 const newPlaying = !isPlaying;
                 setIsPlaying(newPlaying);
                 setIsSynthMode(newPlaying);
                 isPlayingRef.current = newPlaying;
                 isSynthModeRef.current = newPlaying;
 
-                // IMPORTANT: Initialize/resume AudioContext on direct user click!
-                if (window.Tone && window.Tone.context.state !== 'running') {
-                    window.Tone.start();
-                }
-
-                if (audioRef.current) {
-                    audioRef.current.pause(); // Stop original audio so it doesn't clash or block timer
-                }
-
                 if (newPlaying) {
-                    lastPlayedTimeRef.current = currentTime - 0.001; // Start slightly before current time to catch notes at exactly T
+                    // Unlock audio on user gesture (required by browsers)
+                    await ensureAudioCtx();
+                    // Warm-up click so first note is not silent on mobile
+                    try {
+                        const ctx = audioCtxRef.current;
+                        const buf = ctx.createBuffer(1, 1, 22050);
+                        const src = ctx.createBufferSource();
+                        src.buffer = buf;
+                        src.connect(ctx.destination);
+                        src.start(0);
+                    } catch (e) {}
+
+                    // Restart from beginning if already at/near the end
+                    const end = getSequenceEndTime();
+                    if (currentTimeRef.current >= end - 0.15) {
+                        currentTimeRef.current = 0;
+                        setCurrentTime(0);
+                    }
+                    lastPlayedTimeRef.current = currentTimeRef.current - 0.001;
                     lastTickTimeRef.current = performance.now();
+
+                    // Pause original uploaded track — we play note sounds instead
+                    if (audioRef.current) {
+                        audioRef.current.pause();
+                    }
+                } else if (audioRef.current) {
+                    audioRef.current.pause();
                 }
             };
 
@@ -2036,27 +2134,27 @@
                 const now = performance.now();
 
                 if (isPlayingRef.current) {
-                    // Always use delta time in synth mode, it's reliable!
                     const delta = (now - lastTickTimeRef.current) / 1000 * playbackSpeedRef.current;
                     let nextTime = currentTimeRef.current + delta;
+                    const dur = getSequenceEndTime();
 
-                    if (nextTime >= audioDuration && audioDuration > 0) {
+                    if (nextTime >= dur) {
                         setIsPlaying(false);
                         setIsSynthMode(false);
                         isPlayingRef.current = false;
                         isSynthModeRef.current = false;
-                        currentTimeRef.current = 0; // INSTANT UPDATE
+                        currentTimeRef.current = 0;
                         setCurrentTime(0);
                         lastPlayedTimeRef.current = -1;
                     } else {
-                        currentTimeRef.current = nextTime; // INSTANT UPDATE - CRITICAL FIX
+                        currentTimeRef.current = nextTime;
                         setCurrentTime(nextTime);
-                        if (isSynthModeRef.current) {
-                            sequenceRef.current.forEach(note => {
-                                if (note.t > lastPlayedTimeRef.current && note.t <= nextTime) {
-                                    playSynth(note.hz);
-                                }
-                            });
+                        const notes = sequenceRef.current;
+                        for (let i = 0; i < notes.length; i++) {
+                            const note = notes[i];
+                            if (note.t > lastPlayedTimeRef.current && note.t <= nextTime) {
+                                playSample(note);
+                            }
                         }
                         lastPlayedTimeRef.current = nextTime;
                     }
@@ -2096,8 +2194,12 @@
                 fd.append('min_duration_ms', minDuration);
                 fd.append('quality', quality);
                 try {
-                    const res = await fetch(`${getBackendBaseUrl()}/transcribe`, { method: 'POST', body: fd });
-                    if (!res.ok) throw new Error('Сервер қатесі');
+                    const backendUrl = getBackendBaseUrl();
+                    const res = await fetch(`${backendUrl}/transcribe`, { method: 'POST', body: fd });
+                    if (!res.ok) {
+                        const text = await res.text();
+                        throw new Error(`Сервер қатесі (${res.status}): ${text.slice(0, 200)}`);
+                    }
                     const data = await res.json();
                     console.log('Received sequence:', data.sequence?.length, 'notes');
                     setSequence(data.sequence || []);
@@ -2115,7 +2217,8 @@
                         setHistory(prev => [newEntry, ...prev].slice(0, 20));
                     }
                 } catch (err) {
-                    setError('Серверге қосылу мүмкін болмады');
+                    console.error('Backend request failed', err);
+                    setError('Серверге қосылу мүмкін болмады. Локальді сервер 8000 портта жұмыс істеп тұрғанын тексеріңіз.');
                 } finally { setLoading(false); }
             };
 
@@ -2397,7 +2500,10 @@
                                         </thead>
                                         <tbody>
                                             {sequence.length > 0 ? sequence.map((n, i) => (
-                                                <tr key={i}>
+                                                <tr key={i}
+                                                    onClick={(e) => playNoteSound(n, e)}
+                                                    style={{ cursor: 'pointer' }}
+                                                    title={`${n.note || ''} — басып дыбыстау`}>
                                                     <td>{String(i + 1).padStart(2, '0')}</td>
                                                     <td>{n.t.toFixed(2)}s</td>
                                                     <td>{n.s}</td>
@@ -2731,10 +2837,10 @@
 
                                 {sequence.map((n, i) => (
                                     <div key={i} className={`note-block ${n.s === 'G' ? 'string-g' : 'string-d'} ${currentTime >= n.t && currentTime <= n.t + (n.dur / 1000) ? 'active' : ''}`}
-                                        style={{ left: n.t * PIXELS_PER_SECOND, top: n.s === 'G' ? G_STRING_Y : D_STRING_Y, width: Math.max(40, (n.dur / 1000) * PIXELS_PER_SECOND) }}
-                                        onClick={() => playSynth(n.hz)}
-                                        onTouchStart={(e) => { e.preventDefault(); playSynth(n.hz); }}
-                                        title={`${n.note} (${n.hz}Hz) @ ${n.t.toFixed(2)}s`}>
+                                        style={{ left: n.t * PIXELS_PER_SECOND, top: n.s === 'G' ? G_STRING_Y : D_STRING_Y, width: Math.max(40, (n.dur / 1000) * PIXELS_PER_SECOND), cursor: 'pointer' }}
+                                        onClick={(e) => playNoteSound(n, e)}
+                                        onTouchEnd={(e) => playNoteSound(n, e)}
+                                        title={`${n.note} (${n.hz}Hz) — басып дыбыстау`}>
                                         <span style={{ fontSize: '14px' }}>{n.f}</span>
                                         {(n.dur / 1000) * PIXELS_PER_SECOND > 60 && (
                                             <span style={{ fontSize: '9px', opacity: 0.7, marginLeft: 4 }}>{n.note}</span>
