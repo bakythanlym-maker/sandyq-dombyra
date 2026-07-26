@@ -1288,13 +1288,6 @@
             transform: translateY(-50%);
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 2;
-            cursor: pointer;
-            user-select: none;
-        }
-
-        .note-block:active {
-            transform: translateY(-50%) scale(0.96);
-            filter: brightness(1.12);
         }
 
         @media (min-width: 768px) {
@@ -1804,88 +1797,63 @@
 
             const activeTargetHz = tunings[tuning][selectedString.toLowerCase()];
 
-            const noteToHz = (note) => {
-                if (!note) return 0;
-                if (note.hz && note.hz > 0) return Number(note.hz);
-                if (typeof note.midi === 'number') {
-                    return 440 * Math.pow(2, (note.midi - 69) / 12);
-                }
-                if (typeof note.f === 'number' && note.s) {
-                    const base = (note.s === 'G' || note.s === 'g')
-                        ? tunings[tuningRef.current || 'DG'].g
-                        : tunings[tuningRef.current || 'DG'].d;
-                    return base * Math.pow(2, note.f / 12);
-                }
-                return 0;
-            };
-
-            const getAudioCtx = () => {
+            const playSynth = (frequency) => {
+                if (!frequency || frequency <= 0) return;
+                
                 const AC = window.AudioContext || window.webkitAudioContext;
-                if (!AC) return null;
                 if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
                     audioCtxRef.current = new AC();
                 }
-                return audioCtxRef.current;
-            };
-
-            const playSynth = (frequency, durationSec = 0.45) => {
-                const hz = Number(frequency);
-                if (!hz || hz <= 0 || !isFinite(hz)) return;
-
-                const ctx = getAudioCtx();
-                if (!ctx) return;
-
-                const start = () => {
+                const ctx = audioCtxRef.current;
+                
+                const doPlay = () => {
                     try {
-                        const t0 = ctx.currentTime;
+                        const delay = 0.05; // small delay so audio engine is ready
+                        const t = ctx.currentTime + delay;
                         const osc = ctx.createOscillator();
                         const gain = ctx.createGain();
                         osc.type = 'triangle';
-                        osc.frequency.setValueAtTime(hz, t0);
-                        // linear ramps — more reliable than exponential near silence
-                        gain.gain.setValueAtTime(0, t0);
-                        gain.gain.linearRampToValueAtTime(0.35, t0 + 0.02);
-                        gain.gain.linearRampToValueAtTime(0, t0 + durationSec);
+                        osc.frequency.setValueAtTime(frequency, t);
+                        gain.gain.setValueAtTime(0.3, t);
+                        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
                         osc.connect(gain);
                         gain.connect(ctx.destination);
-                        osc.start(t0);
-                        osc.stop(t0 + durationSec + 0.02);
+                        osc.start(t);
+                        osc.stop(t + 0.7);
+                        osc.onended = () => {
+                            gain.disconnect();
+                            osc.disconnect();
+                        };
                     } catch (e) {
-                        console.warn('playSynth error', e);
+                        console.warn('playSynth doPlay error:', e.message);
                     }
                 };
-
+                
                 if (ctx.state === 'running') {
-                    start();
+                    doPlay();
                 } else {
-                    ctx.resume().then(start).catch(() => {
-                        try { start(); } catch (e) {}
+                    // resume is async - play after it resolves
+                    ctx.resume().then(doPlay).catch(e => {
+                        console.warn('resume error:', e);
+                        if (ctx.state === 'closed') {
+                            audioCtxRef.current = new AC();
+                            audioCtxRef.current.resume().then(doPlay).catch(err => console.warn('playSynth retry error:', err));
+                        }
                     });
                 }
             };
 
             const playSample = (note) => {
-                const hz = noteToHz(note);
-                if (!hz) return;
-                const dur = Math.min(0.9, Math.max(0.25, (note.dur || 400) / 1000));
-                playSynth(hz, dur);
-            };
-
-            const playNoteSound = (note, event) => {
-                if (event) {
-                    event.stopPropagation();
-                    if (event.cancelable) event.preventDefault();
+                if (!note || typeof note.f !== 'number' || !note.s) {
+                    return playSynth(note?.hz);
                 }
-                // Unlock audio immediately on the user gesture
-                const ctx = getAudioCtx();
-                if (ctx && ctx.state === 'suspended') ctx.resume();
-                playSample(note);
-            };
-
-            const getSequenceEndTime = () => {
-                const notes = sequenceRef.current || [];
-                const fromNotes = notes.reduce((max, n) => Math.max(max, (n.t || 0) + ((n.dur || 300) / 1000)), 0);
-                return Math.max(audioDurationRef.current || 0, fromNotes, 0.5) + 0.25;
+                const samplePath = new URL(`./samples/${note.s}/${note.f}.m4a`, window.location.href).href;
+                const audio = new Audio(samplePath);
+                audio.volume = 0.85;
+                audio.play().catch(err => {
+                    console.warn('sample play failed, fallback to synth', err);
+                    playSynth(note.hz);
+                });
             };
 
             const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -2084,11 +2052,6 @@
             }, [activeTab]);
 
             const togglePlayback = () => {
-                if (!sequenceRef.current.length) {
-                    alert('Алдымен аудио жүктеңіз немесе ноталар керек');
-                    return;
-                }
-
                 const newPlaying = !isPlaying;
                 setIsPlaying(newPlaying);
                 setIsSynthMode(newPlaying);
@@ -2096,29 +2059,25 @@
                 isSynthModeRef.current = newPlaying;
 
                 if (newPlaying) {
-                    // Unlock audio on user gesture
-                    const ctx = getAudioCtx();
-                    if (ctx && ctx.state === 'suspended') ctx.resume();
-                    try {
-                        if (ctx) {
-                            const buf = ctx.createBuffer(1, 1, 22050);
-                            const src = ctx.createBufferSource();
-                            src.buffer = buf;
-                            src.connect(ctx.destination);
-                            src.start(0);
-                        }
-                    } catch (e) {}
-
-                    const end = getSequenceEndTime();
-                    if (currentTimeRef.current >= end - 0.15) {
-                        currentTimeRef.current = 0;
-                        setCurrentTime(0);
+                    // Create a FRESH AudioContext on every Play click (user gesture = unlocked)
+                    // Close old one first to avoid memory leaks
+                    if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+                        try { audioCtxRef.current.close(); } catch(e) {}
                     }
-                    lastPlayedTimeRef.current = currentTimeRef.current - 0.001;
-                    lastTickTimeRef.current = performance.now();
+                    const AC = window.AudioContext || window.webkitAudioContext;
+                    audioCtxRef.current = new AC();
+                    // Play a silent buffer immediately to "warm up" the audio engine
+                    const buf = audioCtxRef.current.createBuffer(1, 1, 22050);
+                    const src = audioCtxRef.current.createBufferSource();
+                    src.buffer = buf;
+                    src.connect(audioCtxRef.current.destination);
+                    src.start(0);
 
-                    if (audioRef.current) audioRef.current.pause();
-                } else if (audioRef.current) {
+                    lastPlayedTimeRef.current = currentTime - 0.001;
+                    lastTickTimeRef.current = performance.now();
+                }
+
+                if (audioRef.current) {
                     audioRef.current.pause();
                 }
             };
@@ -2129,9 +2088,9 @@
                 if (isPlayingRef.current) {
                     const delta = (now - lastTickTimeRef.current) / 1000 * playbackSpeedRef.current;
                     let nextTime = currentTimeRef.current + delta;
-                    const dur = getSequenceEndTime();
+                    const dur = audioDurationRef.current; // Always use ref, not stale closure!
 
-                    if (nextTime >= dur) {
+                    if (dur > 0 && nextTime >= dur) {
                         setIsPlaying(false);
                         setIsSynthMode(false);
                         isPlayingRef.current = false;
@@ -2146,6 +2105,7 @@
                         for (let i = 0; i < notes.length; i++) {
                             const note = notes[i];
                             if (note.t > lastPlayedTimeRef.current && note.t <= nextTime) {
+                                console.log('PLAY NOTE:', note.hz, 'Hz at t=', note.t.toFixed(3), 'nextTime=', nextTime.toFixed(3));
                                 playSample(note);
                             }
                         }
@@ -2493,10 +2453,7 @@
                                         </thead>
                                         <tbody>
                                             {sequence.length > 0 ? sequence.map((n, i) => (
-                                                <tr key={i}
-                                                    onClick={(e) => playNoteSound(n, e)}
-                                                    style={{ cursor: 'pointer' }}
-                                                    title={`${n.note || ''} — басып дыбыстау`}>
+                                                <tr key={i}>
                                                     <td>{String(i + 1).padStart(2, '0')}</td>
                                                     <td>{n.t.toFixed(2)}s</td>
                                                     <td>{n.s}</td>
@@ -2830,10 +2787,10 @@
 
                                 {sequence.map((n, i) => (
                                     <div key={i} className={`note-block ${n.s === 'G' ? 'string-g' : 'string-d'} ${currentTime >= n.t && currentTime <= n.t + (n.dur / 1000) ? 'active' : ''}`}
-                                        style={{ left: n.t * PIXELS_PER_SECOND, top: n.s === 'G' ? G_STRING_Y : D_STRING_Y, width: Math.max(40, (n.dur / 1000) * PIXELS_PER_SECOND), cursor: 'pointer' }}
-                                        onClick={(e) => playNoteSound(n, e)}
-                                        onTouchEnd={(e) => playNoteSound(n, e)}
-                                        title={`${n.note} (${n.hz}Hz) — басып дыбыстау`}>
+                                        style={{ left: n.t * PIXELS_PER_SECOND, top: n.s === 'G' ? G_STRING_Y : D_STRING_Y, width: Math.max(40, (n.dur / 1000) * PIXELS_PER_SECOND) }}
+                                        onClick={() => playSynth(n.hz)}
+                                        onTouchStart={(e) => { e.preventDefault(); playSynth(n.hz); }}
+                                        title={`${n.note} (${n.hz}Hz) @ ${n.t.toFixed(2)}s`}>
                                         <span style={{ fontSize: '14px' }}>{n.f}</span>
                                         {(n.dur / 1000) * PIXELS_PER_SECOND > 60 && (
                                             <span style={{ fontSize: '9px', opacity: 0.7, marginLeft: 4 }}>{n.note}</span>
