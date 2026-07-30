@@ -1442,6 +1442,12 @@
             left: -1px;
             width: 2px;
             background: rgba(226, 232, 240, 0.55);
+            transition: background 0.15s, box-shadow 0.15s;
+        }
+
+        .gt-center-line.in-tune {
+            background: #bef38d;
+            box-shadow: 0 0 12px rgba(190, 243, 141, 0.55);
         }
 
         .gt-target-bubble {
@@ -1477,8 +1483,10 @@
             top: 8px;
             left: 50%;
             z-index: 6;
+            transform: translateX(-50%);
             transition: transform 0.08s linear;
             pointer-events: none;
+            will-change: transform;
         }
 
         .gt-cents-bubble {
@@ -1628,6 +1636,33 @@
             font-size: 22px;
             color: #bef38d;
             border-color: #bef38d;
+        }
+
+        .gt-tap-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: rgba(10, 12, 14, 0.55);
+            backdrop-filter: blur(2px);
+            cursor: pointer;
+        }
+
+        .gt-tap-title {
+            color: #fff;
+            font-size: 28px;
+            font-weight: 900;
+            letter-spacing: -0.02em;
+        }
+
+        .gt-tap-sub {
+            color: rgba(255, 255, 255, 0.65);
+            font-size: 13px;
+            font-weight: 700;
         }
 
         .gt-board {
@@ -2125,14 +2160,21 @@
             const [tunerStatus, setTunerStatus] = useState('Микрофонды күтуде');
             const [tunerMode, setTunerMode] = useState('auto'); // auto | string
             const [tunerTargetHz, setTunerTargetHz] = useState(196);
+            const [tunerHearing, setTunerHearing] = useState(false);
             const tunerStreamRef = useRef(null);
+            const tunerSourceRef = useRef(null);
             const tunerAnalyserRef = useRef(null);
             const tunerDataRef = useRef(null);
+            const tunerCorrRef = useRef(null);
             const tunerRunningRef = useRef(false);
+            const tunerRafRef = useRef(0);
             const tunerModeRef = useRef('auto');
             const tunerSmoothCentsRef = useRef(0);
             const tunerSmoothFreqRef = useRef(0);
             const tunerLastHeardRef = useRef(0);
+            const tunerLastUiRef = useRef(0);
+            const tunerStringVotesRef = useRef({ key: 'G', n: 0 });
+            const tunerMeterRef = useRef(null);
             const selectedStringRef = useRef('G');
             const tuningRef = useRef(tuning);
             const [recordingTime, setRecordingTime] = useState(0);
@@ -2374,73 +2416,126 @@
                 };
             };
 
-            // YIN pitch detection — much more stable than raw ACF for strings.
-            const yinDetect = (buffer, sampleRate, threshold = 0.12) => {
+            // Fast autocorrelation (PitchDetect-style) — reliable for guitar/dombyra.
+            const detectPitch = (buffer, sampleRate) => {
                 const SIZE = buffer.length;
-                const half = Math.floor(SIZE / 2);
-                if (half < 64) return -1;
-
                 let rms = 0;
                 for (let i = 0; i < SIZE; i++) rms += buffer[i] * buffer[i];
                 rms = Math.sqrt(rms / SIZE);
-                if (rms < 0.008) return -1;
+                // Sensitive enough for quiet rooms / laptop mics.
+                if (rms < 0.004) return -1;
 
-                // Dombyra open strings ~110–200 Hz; allow harmonics / octaves.
-                const minFreq = 70;
-                const maxFreq = 900;
-                const tauMin = Math.max(2, Math.floor(sampleRate / maxFreq));
-                const tauMax = Math.min(half - 2, Math.ceil(sampleRate / minFreq));
+                // Focus on musical fundamentals (+ one harmonic octave).
+                const minFreq = 75;
+                const maxFreq = 700;
+                const minLag = Math.max(2, Math.floor(sampleRate / maxFreq));
+                const maxLag = Math.min(Math.floor(SIZE / 2) - 2, Math.ceil(sampleRate / minFreq));
+                if (minLag >= maxLag) return -1;
 
-                const yin = new Float32Array(tauMax + 1);
-                for (let tau = 1; tau <= tauMax; tau++) {
+                let corr = tunerCorrRef.current;
+                if (!corr || corr.length < maxLag + 1) {
+                    corr = new Float32Array(maxLag + 1);
+                    tunerCorrRef.current = corr;
+                }
+
+                // Normalize buffer for ACF stability.
+                let mean = 0;
+                for (let i = 0; i < SIZE; i++) mean += buffer[i];
+                mean /= SIZE;
+
+                for (let lag = minLag; lag <= maxLag; lag++) {
                     let sum = 0;
-                    for (let i = 0; i < half; i++) {
-                        const d = buffer[i] - buffer[i + tau];
-                        sum += d * d;
+                    // Stride-2 for speed; still accurate enough after interpolation.
+                    for (let i = 0; i < SIZE - lag; i += 2) {
+                        const a = buffer[i] - mean;
+                        const b = buffer[i + lag] - mean;
+                        sum += a * b;
                     }
-                    yin[tau] = sum;
+                    corr[lag] = sum;
                 }
 
-                yin[0] = 1;
-                let running = 0;
-                for (let tau = 1; tau <= tauMax; tau++) {
-                    running += yin[tau];
-                    yin[tau] = running > 0 ? (yin[tau] * tau) / running : 1;
-                }
+                // Walk past the decreasing slope near lag=0.
+                let d = minLag;
+                while (d < maxLag && corr[d] > corr[d + 1]) d++;
 
-                let tauEstimate = -1;
-                for (let tau = tauMin; tau <= tauMax; tau++) {
-                    if (yin[tau] < threshold) {
-                        while (tau + 1 <= tauMax && yin[tau + 1] < yin[tau]) tau++;
-                        tauEstimate = tau;
-                        break;
+                let bestLag = -1;
+                let bestVal = -Infinity;
+                for (let lag = d; lag <= maxLag; lag++) {
+                    if (corr[lag] > bestVal) {
+                        bestVal = corr[lag];
+                        bestLag = lag;
                     }
                 }
-                if (tauEstimate < 0) return -1;
 
-                const x0 = yin[tauEstimate - 1] ?? yin[tauEstimate];
-                const x1 = yin[tauEstimate];
-                const x2 = yin[tauEstimate + 1] ?? yin[tauEstimate];
-                const denom = 2 * (2 * x1 - x0 - x2);
-                const betterTau = denom ? tauEstimate + (x2 - x0) / denom : tauEstimate;
-                if (!(betterTau > 0)) return -1;
+                // Reject weak periodicity (noise / speech).
+                let energy = 0;
+                for (let i = 0; i < SIZE; i += 2) {
+                    const a = buffer[i] - mean;
+                    energy += a * a;
+                }
+                const conf = bestVal / (energy + 1e-9);
+                if (bestLag < 0 || conf < 0.25) return -1;
 
-                const freq = sampleRate / betterTau;
+                // Parabolic interpolation around peak.
+                const y0 = corr[bestLag - 1] || corr[bestLag];
+                const y1 = corr[bestLag];
+                const y2 = corr[bestLag + 1] || corr[bestLag];
+                const denom = (y0 - 2 * y1 + y2);
+                const shift = denom ? (0.5 * (y0 - y2) / denom) : 0;
+                const period = bestLag + shift;
+                if (!(period > 0)) return -1;
+
+                const freq = sampleRate / period;
                 if (freq < minFreq || freq > maxFreq) return -1;
-                // Confidence proxy: lower yin[tau] is better.
-                if (yin[tauEstimate] > threshold * 1.35) return -1;
                 return freq;
+            };
+
+            // Prefer fundamental near open strings (fix octave/harmonic jumps).
+            const resolveAgainstStrings = (rawHz, tMap) => {
+                const targets = [
+                    { key: 'D', hz: tMap.d },
+                    { key: 'G', hz: tMap.g },
+                ];
+                const candidates = [rawHz, rawHz / 2, rawHz / 3, rawHz * 2]
+                    .filter((f) => f >= 70 && f <= 500);
+
+                let best = {
+                    key: 'G',
+                    freq: rawHz,
+                    targetHz: tMap.g,
+                    cents: centsToTarget(rawHz, tMap.g),
+                    score: Infinity,
+                };
+
+                for (const cand of candidates) {
+                    for (const t of targets) {
+                        const cents = centsToTarget(cand, t.hz);
+                        const score = Math.abs(cents);
+                        if (score < best.score) {
+                            best = { key: t.key, freq: cand, targetHz: t.hz, cents, score };
+                        }
+                    }
+                }
+                return best;
+            };
+
+            // Needle position updates every frame via DOM (React must not set `style` on this node).
+            const paintNeedle = (hearing, cents) => {
+                if (!tunerMeterRef.current) return;
+                const meterEm = hearing ? Math.max(-12.5, Math.min(12.5, cents / 16)) : 0;
+                tunerMeterRef.current.style.transform = `translateX(calc(-50% + ${meterEm}em))`;
             };
 
             const startTuner = async () => {
                 if (tunerRunningRef.current) return;
+                // Must run inside tap (iOS/Safari). Unlock AudioContext first.
+                const ctx = unlockAudioEngine();
+                if (!ctx) {
+                    setTunerStatus('Audio қолдау жоқ');
+                    return;
+                }
                 setTunerStatus('Микрофон іске қосылуда...');
                 try {
-                    const AudioContext = window.AudioContext || window.webkitAudioContext;
-                    if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
-                        audioCtxRef.current = new AudioContext();
-                    }
-                    const ctx = audioCtxRef.current;
                     if (ctx.state === 'suspended') await ctx.resume();
 
                     const stream = await navigator.mediaDevices.getUserMedia({
@@ -2448,133 +2543,165 @@
                             echoCancellation: false,
                             noiseSuppression: false,
                             autoGainControl: false,
+                            channelCount: 1,
                         },
                     });
                     tunerStreamRef.current = stream;
+
+                    // Fresh graph for the mic path.
+                    if (tunerSourceRef.current) {
+                        try { tunerSourceRef.current.disconnect(); } catch (_) {}
+                    }
                     const source = ctx.createMediaStreamSource(stream);
+                    tunerSourceRef.current = source;
+
                     const analyser = ctx.createAnalyser();
-                    // Larger buffer + no smoothing → cleaner fundamental for YIN.
-                    analyser.fftSize = 2048;
+                    analyser.fftSize = 4096;
                     analyser.smoothingTimeConstant = 0;
                     source.connect(analyser);
                     tunerAnalyserRef.current = analyser;
                     tunerDataRef.current = new Float32Array(analyser.fftSize);
-                    tunerRunningRef.current = true;
-                    setTunerActive(true);
-                    setTunerStatus('Ойнаңыз...');
 
-                    let frame = 0;
+                    tunerRunningRef.current = true;
+                    tunerSmoothCentsRef.current = 0;
+                    tunerSmoothFreqRef.current = 0;
+                    tunerLastHeardRef.current = 0;
+                    tunerStringVotesRef.current = { key: selectedStringRef.current, n: 0 };
+                    setTunerActive(true);
+                    setTunerHearing(false);
+                    setTunerStatus('Play a string');
+                    paintNeedle(false, 0);
+
                     const update = () => {
                         if (!tunerRunningRef.current || !tunerAnalyserRef.current) return;
-                        frame++;
-                        // YIN every other frame — keeps UI smooth on phones.
-                        if (frame % 2 === 1) {
-                            requestAnimationFrame(update);
-                            return;
-                        }
                         tunerAnalyserRef.current.getFloatTimeDomainData(tunerDataRef.current);
-                        const pitch = yinDetect(tunerDataRef.current, ctx.sampleRate);
+                        const raw = detectPitch(tunerDataRef.current, ctx.sampleRate);
                         const now = performance.now();
+                        const tMap = tunings[tuningRef.current] || tunings.DG;
+                        const mode = tunerModeRef.current;
 
-                        if (pitch > 0) {
+                        if (raw > 0) {
                             tunerLastHeardRef.current = now;
-                            // Mild frequency smoothing so Hz readout doesn't flicker.
-                            const prevF = tunerSmoothFreqRef.current || pitch;
-                            const smoothF = prevF * 0.55 + pitch * 0.45;
-                            tunerSmoothFreqRef.current = smoothF;
 
-                            const mode = tunerModeRef.current;
-                            const tMap = tunings[tuningRef.current] || tunings.DG;
+                            let pitchHz = raw;
                             let targetHz;
-                            let noteLabel;
                             let cents;
                             let stringKey = selectedStringRef.current;
 
                             if (mode === 'string') {
+                                // Manual: lock to selected string; fold harmonics/octaves to it.
                                 stringKey = selectedStringRef.current;
                                 targetHz = tMap[stringKey.toLowerCase()];
-                                cents = centsToTarget(smoothF, targetHz);
-                                noteLabel = noteLabelFromMidi(midiFromHz(targetHz));
-                            } else {
-                                // GuitarTuna Auto: lock onto nearest open string by cents.
-                                const dCents = centsToTarget(smoothF, tMap.d);
-                                const gCents = centsToTarget(smoothF, tMap.g);
-                                if (Math.abs(dCents) <= Math.abs(gCents)) {
-                                    stringKey = 'D';
-                                    cents = dCents;
-                                    targetHz = tMap.d;
-                                } else {
-                                    stringKey = 'G';
-                                    cents = gCents;
-                                    targetHz = tMap.g;
+                                let bestF = raw;
+                                let bestC = centsToTarget(raw, targetHz);
+                                for (const cand of [raw, raw / 2, raw / 3, raw * 2]) {
+                                    if (cand < 70 || cand > 500) continue;
+                                    const c = centsToTarget(cand, targetHz);
+                                    if (Math.abs(c) < Math.abs(bestC)) {
+                                        bestF = cand;
+                                        bestC = c;
+                                    }
                                 }
-                                noteLabel = noteLabelFromMidi(midiFromHz(targetHz));
-                                if (selectedStringRef.current !== stringKey) {
+                                pitchHz = bestF;
+                                cents = bestC;
+                            } else {
+                                // Auto: nearest open string (GuitarTuna), with switch hysteresis.
+                                const resolved = resolveAgainstStrings(raw, tMap);
+                                pitchHz = resolved.freq;
+                                const votes = tunerStringVotesRef.current;
+                                if (resolved.key === votes.key) votes.n += 1;
+                                else {
+                                    votes.key = resolved.key;
+                                    votes.n = 1;
+                                }
+                                if (votes.n >= 4) stringKey = votes.key;
+                                else stringKey = selectedStringRef.current;
+
+                                targetHz = tMap[stringKey.toLowerCase()];
+                                cents = centsToTarget(pitchHz, targetHz);
+
+                                if (stringKey !== selectedStringRef.current) {
                                     selectedStringRef.current = stringKey;
                                     setSelectedString(stringKey);
                                 }
                             }
 
-                            // Smooth cents for the needle (GT feels damped, not jittery).
-                            const prev = tunerSmoothCentsRef.current;
-                            const smoothed = prev * 0.72 + cents * 0.28;
+                            const prevF = tunerSmoothFreqRef.current || pitchHz;
+                            const smoothF = prevF * 0.6 + pitchHz * 0.4;
+                            tunerSmoothFreqRef.current = smoothF;
+
+                            const prevC = tunerSmoothCentsRef.current;
+                            const smoothed = prevC * 0.75 + cents * 0.25;
                             tunerSmoothCentsRef.current = smoothed;
 
-                            setTunerFreq(Math.round(smoothF * 10) / 10);
-                            setTunerTargetHz(Math.round(targetHz * 100) / 100);
-                            setTunerCents(Math.round(smoothed * 10) / 10);
-                            setTunerNote(noteLabel);
-
                             const abs = Math.abs(smoothed);
-                            // Soft in-tune like GT InTuneRatio (~±5 cents hard lock).
-                            if (abs <= 5) setTunerStatus('In tune!');
-                            else if (smoothed > 0) setTunerStatus('Tune down!');
-                            else setTunerStatus('Tune up!');
-                        } else {
-                            // Hold last reading briefly (GT keeps noteOn for ~1s of silence).
-                            if (now - tunerLastHeardRef.current > 700) {
-                                tunerSmoothCentsRef.current *= 0.8;
-                                tunerSmoothFreqRef.current = 0;
+                            const tip = abs <= 5 ? 'In tune!' : (smoothed > 0 ? 'Tune down!' : 'Tune up!');
+                            paintNeedle(true, smoothed);
+
+                            // Throttle React labels; needle is painted above every frame.
+                            if (now - tunerLastUiRef.current > 50) {
+                                tunerLastUiRef.current = now;
+                                setTunerHearing(true);
+                                setTunerFreq(Math.round(smoothF * 10) / 10);
+                                setTunerTargetHz(Math.round(targetHz * 100) / 100);
+                                setTunerCents(Math.round(smoothed * 10) / 10);
+                                setTunerNote(noteLabelFromMidi(midiFromHz(targetHz)));
+                                setTunerStatus(tip);
+                            }
+                        } else if (now - tunerLastHeardRef.current > 450) {
+                            tunerSmoothCentsRef.current *= 0.7;
+                            tunerSmoothFreqRef.current = 0;
+                            paintNeedle(false, 0);
+                            if (now - tunerLastUiRef.current > 80) {
+                                tunerLastUiRef.current = now;
+                                setTunerHearing(false);
                                 setTunerFreq(0);
-                                setTunerCents(Math.round(tunerSmoothCentsRef.current * 10) / 10);
+                                setTunerCents(0);
                                 setTunerNote('—');
                                 setTunerStatus('Play a string');
                             }
                         }
 
-                        requestAnimationFrame(update);
+                        tunerRafRef.current = requestAnimationFrame(update);
                     };
-                    update();
+                    tunerRafRef.current = requestAnimationFrame(update);
                 } catch (err) {
                     console.warn('Tuner error', err);
-                    setTunerStatus('Микрофон қол жетімді емес');
+                    setTunerStatus('Микрофонға рұқсат беріңіз');
                     setTunerActive(false);
+                    tunerRunningRef.current = false;
                 }
             };
 
             const stopTuner = () => {
                 tunerRunningRef.current = false;
-                setTunerActive(false);
-                setTunerFreq(0);
-                setTunerCents(0);
-                setTunerNote('—');
-                setTunerStatus('Тюнер тоқтатылды');
-                tunerSmoothCentsRef.current = 0;
-                tunerSmoothFreqRef.current = 0;
-                tunerLastHeardRef.current = 0;
+                if (tunerRafRef.current) {
+                    cancelAnimationFrame(tunerRafRef.current);
+                    tunerRafRef.current = 0;
+                }
+                if (tunerSourceRef.current) {
+                    try { tunerSourceRef.current.disconnect(); } catch (_) {}
+                    tunerSourceRef.current = null;
+                }
                 if (tunerStreamRef.current) {
-                    tunerStreamRef.current.getTracks().forEach(track => track.stop());
+                    tunerStreamRef.current.getTracks().forEach((track) => track.stop());
                     tunerStreamRef.current = null;
                 }
                 tunerAnalyserRef.current = null;
+                setTunerActive(false);
+                setTunerHearing(false);
+                setTunerFreq(0);
+                setTunerCents(0);
+                setTunerNote('—');
+                setTunerStatus('Tap to tune');
+                tunerSmoothCentsRef.current = 0;
+                tunerSmoothFreqRef.current = 0;
+                tunerLastHeardRef.current = 0;
             };
 
+            // GuitarTuna-style: do NOT auto-start mic (needs a tap on iOS).
             useEffect(() => {
-                if (activeTab === 'tuner') {
-                    startTuner();
-                } else {
-                    stopTuner();
-                }
+                if (activeTab !== 'tuner') stopTuner();
                 return () => stopTuner();
             }, [activeTab]);
 
@@ -3057,20 +3184,14 @@
 
                     {activeTab === 'tuner' && (() => {
                         const tMap = tunings[tuning] || tunings.DG;
-                        const hearing = tunerFreq > 0;
+                        const hearing = tunerHearing && tunerFreq > 0;
                         const inTune = hearing && Math.abs(tunerCents) <= 5;
                         const isSharp = hearing && tunerCents > 5;
-                        const isFlat = hearing && tunerCents < -5;
                         const toneClass = !hearing ? 'silent' : (inTune ? 'in-tune' : (isSharp ? 'sharp' : 'flat'));
-                        // GuitarTuna.com exact mapping:
-                        // percentFromNote = round(cents), translateX = clamp(cents/16, ±12.5) em
-                        const meterEm = hearing
-                            ? Math.max(-12.5, Math.min(12.5, tunerCents / 16))
-                            : 0;
                         const centsShown = hearing ? Math.round(Math.abs(tunerCents)) : 0;
-                        const tipText = !hearing
-                            ? (tunerActive ? 'Play a string' : 'Tap to start')
-                            : (inTune ? 'In tune!' : (isSharp ? 'Tune down!' : 'Tune up!'));
+                        const tipText = !tunerActive
+                            ? 'Tap to tune'
+                            : (!hearing ? 'Play a string' : (inTune ? 'In tune!' : (isSharp ? 'Tune down!' : 'Tune up!')));
                         const targetLabel = (() => {
                             const hz = tunerTargetHz || tMap[selectedString.toLowerCase()];
                             const info = getNoteFromFrequency(hz);
@@ -3084,7 +3205,17 @@
                         for (let i = -10; i <= 10; i++) ticks.push(i);
 
                         return (
-                            <div className="gt-stage" onClick={() => { if (!tunerActive) startTuner(); }}>
+                            <div
+                                className="gt-stage"
+                                onClick={() => { if (!tunerActive) startTuner(); }}
+                            >
+                                {!tunerActive && (
+                                    <div className="gt-tap-overlay">
+                                        <div className="gt-tap-title">Tap to tune</div>
+                                        <div className="gt-tap-sub">Микрофонға рұқсат беріңіз</div>
+                                    </div>
+                                )}
+
                                 <div className="gt-mode-bar" onClick={(e) => e.stopPropagation()}>
                                     <button
                                         className={`gt-mode-btn ${tunerMode === 'auto' ? 'active' : ''}`}
@@ -3115,38 +3246,29 @@
                                     ))}
                                 </div>
 
-                                {/* Moving cents bubble — RIGHT = sharp, LEFT = flat */}
-                                <div
-                                    className={`gt-cents-meter ${toneClass}`}
-                                    style={{ transform: `translateX(calc(-50% + ${meterEm}em))` }}
-                                >
+                                {/* No React `style` here — paintNeedle() owns transform each frame */}
+                                <div ref={tunerMeterRef} className={`gt-cents-meter ${toneClass}`}>
                                     <div className={`gt-cents-bubble ${inTune ? 'check' : ''}`}>
                                         {inTune ? '✓' : centsShown}
                                     </div>
                                     <div className="gt-cents-caret" />
                                 </div>
 
-                                <div className={`gt-tip show ${toneClass}`}>
-                                    {tipText}
-                                </div>
+                                <div className={`gt-tip show ${toneClass}`}>{tipText}</div>
 
                                 <div className={`gt-hz ${hearing ? '' : 'silent'}`}>
                                     {hearing ? (
                                         <>
                                             <strong>{tunerFreq.toFixed(1)} Hz</strong>
-                                            {' → '}
-                                            {Number(tunerTargetHz).toFixed(1)} Hz
-                                            {' · '}
-                                            {tunerCents > 0 ? '+' : ''}{Math.round(tunerCents)}¢
+                                            {` → ${Number(tunerTargetHz).toFixed(1)} Hz · ${tunerCents >= 0 ? '+' : ''}${Math.round(tunerCents)}¢`}
                                         </>
                                     ) : (
-                                        <>target {Number(tunerTargetHz || tMap[selectedString.toLowerCase()]).toFixed(1)} Hz</>
+                                        <>target {(tunerTargetHz || tMap[selectedString.toLowerCase()]).toFixed(1)} Hz</>
                                     )}
                                 </div>
 
-                                {/* Fixed center = perfect pitch */}
                                 <div className="gt-needle">
-                                    <div className="gt-center-line" />
+                                    <div className={`gt-center-line ${inTune ? 'in-tune' : ''}`} />
                                     <div className={`gt-target-bubble ${inTune ? 'in-tune' : ''}`}>
                                         {targetLabel}
                                     </div>
