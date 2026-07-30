@@ -1365,7 +1365,257 @@
             pointer-events: none;
         }
 
-        /* Premium Tuner Styling */
+        /* ===== GuitarTuna-style Dombyra Tuner ===== */
+        .gt-tuner {
+            width: 100%;
+            max-width: 420px;
+            margin: 0 auto 24px;
+            padding: 8px 12px 28px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .gt-tuner-title {
+            font-size: 13px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: #94a3b8;
+            font-weight: 800;
+        }
+
+        .gt-mode-row {
+            display: flex;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 999px;
+            padding: 4px;
+        }
+
+        .gt-mode-btn {
+            border: none;
+            background: transparent;
+            color: #94a3b8;
+            font-weight: 800;
+            font-size: 12px;
+            padding: 10px 18px;
+            border-radius: 999px;
+            cursor: pointer;
+            min-height: 40px;
+        }
+
+        .gt-mode-btn.active {
+            background: #bef38d;
+            color: #0f172a;
+        }
+
+        .gt-dial-wrap {
+            position: relative;
+            width: min(320px, 88vw);
+            height: 210px;
+            margin-top: 4px;
+        }
+
+        .gt-dial-svg {
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+
+        .gt-needle {
+            transform-origin: 160px 160px;
+            transition: transform 0.08s linear;
+            filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.35));
+        }
+
+        .gt-needle.in-tune {
+            filter: drop-shadow(0 0 10px rgba(190, 243, 141, 0.95));
+        }
+
+        .gt-center {
+            position: absolute;
+            left: 50%;
+            bottom: 8px;
+            transform: translateX(-50%);
+            text-align: center;
+            width: 100%;
+            pointer-events: none;
+        }
+
+        .gt-note {
+            font-size: clamp(52px, 14vw, 72px);
+            font-weight: 900;
+            line-height: 0.95;
+            color: #f8fafc;
+            letter-spacing: -0.02em;
+            transition: color 0.2s, text-shadow 0.2s, transform 0.2s;
+        }
+
+        .gt-note.in-tune {
+            color: #bef38d;
+            text-shadow: 0 0 28px rgba(190, 243, 141, 0.55);
+            transform: scale(1.06);
+        }
+
+        .gt-note.flat { color: #60a5fa; }
+        .gt-note.sharp { color: #fb7185; }
+        .gt-note.silent { color: #64748b; }
+
+        .gt-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 10px;
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        .gt-badge.silent {
+            background: rgba(148, 163, 184, 0.12);
+            color: #94a3b8;
+        }
+
+        .gt-badge.flat {
+            background: rgba(59, 130, 246, 0.16);
+            color: #93c5fd;
+            border: 1px solid rgba(59, 130, 246, 0.25);
+        }
+
+        .gt-badge.sharp {
+            background: rgba(244, 63, 94, 0.16);
+            color: #fda4af;
+            border: 1px solid rgba(244, 63, 94, 0.25);
+        }
+
+        .gt-badge.in-tune {
+            background: rgba(190, 243, 141, 0.18);
+            color: #bef38d;
+            border: 1px solid rgba(190, 243, 141, 0.35);
+            animation: gt-pulse 1.4s ease-in-out infinite;
+        }
+
+        @keyframes gt-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(190, 243, 141, 0.35); }
+            50% { box-shadow: 0 0 0 10px rgba(190, 243, 141, 0); }
+        }
+
+        .gt-meta {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            font-weight: 700;
+            color: #94a3b8;
+        }
+
+        .gt-meta strong {
+            color: #e2e8f0;
+        }
+
+        .gt-strings {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            width: 100%;
+            max-width: 340px;
+        }
+
+        .gt-string-btn {
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.04);
+            color: #e2e8f0;
+            border-radius: 18px;
+            padding: 14px 12px;
+            cursor: pointer;
+            text-align: left;
+            min-height: 72px;
+            transition: transform 0.15s, border-color 0.15s, background 0.15s;
+        }
+
+        .gt-string-btn:active { transform: scale(0.98); }
+
+        .gt-string-btn.active {
+            background: rgba(190, 243, 141, 0.12);
+            border-color: rgba(190, 243, 141, 0.55);
+            box-shadow: 0 0 0 1px rgba(190, 243, 141, 0.2);
+        }
+
+        .gt-string-btn .gt-string-name {
+            font-size: 22px;
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        .gt-string-btn .gt-string-sub {
+            margin-top: 6px;
+            font-size: 11px;
+            color: #94a3b8;
+            font-weight: 700;
+        }
+
+        .gt-actions {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            max-width: 340px;
+        }
+
+        .gt-action-btn {
+            flex: 1;
+            min-height: 48px;
+            border-radius: 16px;
+            border: none;
+            font-weight: 800;
+            font-size: 13px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .gt-action-btn.primary {
+            background: #bef38d;
+            color: #0f172a;
+        }
+
+        .gt-action-btn.ghost {
+            background: rgba(255, 255, 255, 0.06);
+            color: #e2e8f0;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .gt-hint {
+            font-size: 12px;
+            color: #64748b;
+            text-align: center;
+            max-width: 320px;
+            line-height: 1.45;
+            font-weight: 700;
+        }
+
+        body.light-theme .gt-mode-row,
+        body.light-theme .gt-string-btn,
+        body.light-theme .gt-action-btn.ghost {
+            background: rgba(15, 23, 42, 0.04);
+            border-color: rgba(15, 23, 42, 0.08);
+            color: #0f172a;
+        }
+
+        body.light-theme .gt-note { color: #0f172a; }
+        body.light-theme .gt-note.silent { color: #64748b; }
+        body.light-theme .gt-meta { color: #64748b; }
+        body.light-theme .gt-meta strong { color: #0f172a; }
+        body.light-theme .gt-string-btn .gt-string-sub { color: #64748b; }
+
+        /* Premium Tuner Styling (legacy helpers kept for compatibility) */
         .tuner-container {
             display: flex;
             flex-direction: column;
@@ -1725,11 +1975,15 @@
             const [selectedString, setSelectedString] = useState('G');
             const [tunerFreq, setTunerFreq] = useState(0);
             const [tunerCents, setTunerCents] = useState(0);
-            const [tunerStatus, setTunerStatus] = useState('Тұрақты емес');
+            const [tunerNote, setTunerNote] = useState('—');
+            const [tunerStatus, setTunerStatus] = useState('Микрофонды күтуде');
+            const [tunerMode, setTunerMode] = useState('auto'); // auto | string
             const tunerStreamRef = useRef(null);
             const tunerAnalyserRef = useRef(null);
             const tunerDataRef = useRef(null);
             const tunerRunningRef = useRef(false);
+            const tunerModeRef = useRef('auto');
+            const tunerSmoothCentsRef = useRef(0);
             const selectedStringRef = useRef('G');
             const tuningRef = useRef(tuning);
             const [recordingTime, setRecordingTime] = useState(0);
@@ -1820,6 +2074,7 @@
             useEffect(() => { if (audioRef.current) audioRef.current.playbackRate = playbackSpeed; }, [playbackSpeed, audioUrl]);
             useEffect(() => { selectedStringRef.current = selectedString; }, [selectedString]);
             useEffect(() => { tuningRef.current = tuning; }, [tuning]);
+            useEffect(() => { tunerModeRef.current = tunerMode; }, [tunerMode]);
 
             const PIXELS_PER_SECOND = 160;
             const G_STRING_Y = 100;
@@ -2004,67 +2259,89 @@
                 setTunerStatus('Микрофон іске қосылуда...');
                 try {
                     const AudioContext = window.AudioContext || window.webkitAudioContext;
-                    if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
+                    if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+                        audioCtxRef.current = new AudioContext();
+                    }
                     const ctx = audioCtxRef.current;
                     if (ctx.state === 'suspended') await ctx.resume();
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        audio: {
+                            echoCancellation: false,
+                            noiseSuppression: false,
+                            autoGainControl: false,
+                        },
+                    });
                     tunerStreamRef.current = stream;
                     const source = ctx.createMediaStreamSource(stream);
                     const analyser = ctx.createAnalyser();
                     analyser.fftSize = 4096;
-                    analyser.minDecibels = -90;
-                    analyser.maxDecibels = -10;
-                    analyser.smoothingTimeConstant = 0.85;
+                    analyser.smoothingTimeConstant = 0.8;
                     source.connect(analyser);
                     tunerAnalyserRef.current = analyser;
                     tunerDataRef.current = new Float32Array(analyser.fftSize);
                     tunerRunningRef.current = true;
                     setTunerActive(true);
+                    setTunerStatus('Ойнаңыз...');
 
-                    let backendUpdateCounter = 0;
-
-                    const update = async () => {
+                    const update = () => {
                         if (!tunerRunningRef.current || !tunerAnalyserRef.current) return;
                         tunerAnalyserRef.current.getFloatTimeDomainData(tunerDataRef.current);
-
-                        // Use local autocorrelation for instant feedback
                         const pitch = autoCorrelate(tunerDataRef.current, ctx.sampleRate);
+
                         if (pitch > 0) {
-                            const targetHz = tunings[tuningRef.current][selectedStringRef.current.toLowerCase()];
-                            const cents = Math.round(1200 * Math.log2(pitch / targetHz));
-                            setTunerFreq(Math.round(pitch * 10) / 10);
-                            setTunerCents(cents);
-                            const diff = Math.abs(cents);
-                            if (diff <= 5) {
-                                setTunerStatus('Тұрақты');
-                            } else if (cents > 0) {
-                                setTunerStatus('Өткір');
+                            const mode = tunerModeRef.current;
+                            const tMap = tunings[tuningRef.current] || tunings.DG;
+                            let targetHz;
+                            let noteLabel;
+                            let cents;
+
+                            if (mode === 'string') {
+                                const s = selectedStringRef.current;
+                                targetHz = tMap[s.toLowerCase()];
+                                let adjusted = pitch;
+                                let ratio = adjusted / targetHz;
+                                while (ratio > Math.SQRT2) { adjusted /= 2; ratio = adjusted / targetHz; }
+                                while (ratio < 1 / Math.SQRT2) { adjusted *= 2; ratio = adjusted / targetHz; }
+                                cents = 1200 * Math.log2(adjusted / targetHz);
+                                const midi = Math.round(69 + 12 * Math.log2(targetHz / 440));
+                                noteLabel = noteNames[(midi + 120) % 12] + (Math.floor(midi / 12) - 1);
                             } else {
-                                setTunerStatus('Төмен');
-                            }
-                        } else {
-                            setTunerStatus('Дыбыс анықталмады');
-                        }
+                                // GuitarTuna-style chromatic auto: nearest equal-tempered note.
+                                const midiExact = 69 + 12 * Math.log2(pitch / 440);
+                                const midiRound = Math.round(midiExact);
+                                cents = (midiExact - midiRound) * 100;
+                                noteLabel = noteNames[(midiRound + 120) % 12] + (Math.floor(midiRound / 12) - 1);
+                                targetHz = 440 * Math.pow(2, (midiRound - 69) / 12);
 
-                        // Send to backend every ~2 seconds for accuracy confirmation (optional)
-                        backendUpdateCounter++;
-                        if (backendUpdateCounter >= 120 && pitch > 0) {
-                            backendUpdateCounter = 0;
-                            try {
-                                const wav = float32ToWav(tunerDataRef.current, ctx.sampleRate);
-                                const blob = new Blob([wav], { type: 'audio/wav' });
-                                const formData = new FormData();
-                                formData.append('file', blob, 'tuner_sample.wav');
-
-                                const backendUrl = getBackendBaseUrl();
-                                const response = await fetch(`${backendUrl}/tune`, { method: 'POST', body: formData });
-                                const result = await response.json();
-                                if (result.frequency && result.frequency > 0) {
-                                    // Optional: You can use backend result for calibration
+                                // Soft-highlight closest dombyra open string.
+                                const dCents = Math.abs(1200 * Math.log2(pitch / tMap.d));
+                                const gCents = Math.abs(1200 * Math.log2(pitch / tMap.g));
+                                const nearest = (dCents % 1200 < gCents % 1200) ? 'D' : 'G';
+                                if (Math.min(dCents % 1200, gCents % 1200) < 40 && selectedStringRef.current !== nearest) {
+                                    selectedStringRef.current = nearest;
+                                    setSelectedString(nearest);
                                 }
-                            } catch (err) {
-                                console.warn('Backend tuner (non-critical):', err);
                             }
+
+                            // Smooth needle so it doesn't jitter like a cheap meter.
+                            const prev = tunerSmoothCentsRef.current;
+                            const smoothed = prev * 0.65 + cents * 0.35;
+                            tunerSmoothCentsRef.current = smoothed;
+
+                            setTunerFreq(Math.round(pitch * 10) / 10);
+                            setTunerCents(Math.round(smoothed * 10) / 10);
+                            setTunerNote(noteLabel);
+                            const abs = Math.abs(smoothed);
+                            if (abs <= 5) setTunerStatus('Тұрақты');
+                            else if (smoothed > 0) setTunerStatus('Өткір — босатыңыз');
+                            else setTunerStatus('Төмен — тартыңыз');
+                        } else {
+                            tunerSmoothCentsRef.current *= 0.85;
+                            setTunerFreq(0);
+                            setTunerCents(Math.round(tunerSmoothCentsRef.current));
+                            setTunerNote('—');
+                            setTunerStatus('Дыбыс жоқ');
                         }
 
                         requestAnimationFrame(update);
@@ -2073,43 +2350,8 @@
                 } catch (err) {
                     console.warn('Tuner error', err);
                     setTunerStatus('Микрофон қол жетімді емес');
+                    setTunerActive(false);
                 }
-            };
-
-            const float32ToWav = (float32Data, sampleRate) => {
-                const length = float32Data.length;
-                const buffer = new ArrayBuffer(44 + length * 2);
-                const view = new DataView(buffer);
-
-                // WAV header helper
-                const writeString = (offset, string) => {
-                    for (let i = 0; i < string.length; i++) {
-                        view.setUint8(offset + i, string.charCodeAt(i));
-                    }
-                };
-
-                writeString(0, 'RIFF');
-                view.setUint32(4, 36 + length * 2, true);
-                writeString(8, 'WAVE');
-                writeString(12, 'fmt ');
-                view.setUint32(16, 16, true);
-                view.setUint16(20, 1, true);
-                view.setUint16(22, 1, true);
-                view.setUint32(24, sampleRate, true);
-                view.setUint32(28, sampleRate * 2, true);
-                view.setUint16(32, 2, true);
-                view.setUint16(34, 16, true);
-                writeString(36, 'data');
-                view.setUint32(40, length * 2, true);
-
-                let j = 0;
-                for (let i = 0; i < length; i++) {
-                    const s = Math.max(-1, Math.min(1, float32Data[i]));
-                    view.setInt16(44 + j, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-                    j += 2;
-                }
-
-                return buffer;
             };
 
             const stopTuner = () => {
@@ -2117,7 +2359,9 @@
                 setTunerActive(false);
                 setTunerFreq(0);
                 setTunerCents(0);
+                setTunerNote('—');
                 setTunerStatus('Тюнер тоқтатылды');
+                tunerSmoothCentsRef.current = 0;
                 if (tunerStreamRef.current) {
                     tunerStreamRef.current.getTracks().forEach(track => track.stop());
                     tunerStreamRef.current = null;
@@ -2611,119 +2855,154 @@
                         </div>
                     )}
 
-                    {activeTab === 'tuner' && (
-                        <div style={{ padding: '0', background: 'transparent', border: 'none', boxShadow: 'none', marginBottom: 0 }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 20, justifyItems: 'center', alignItems: 'center', padding: '20px', minHeight: 'calc(100vh - 140px)', justifyContent: 'space-between' }}>
-                                {/* Header info */}
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: '100%' }}>
-                                    <div style={{ fontSize: '18px', fontWeight: 600, color: '#bef38d' }}>
-                                        {selectedString} БҰРАУ
-                                    </div>
-                                    <div style={{ fontSize: '12px', color: '#888' }}>...</div>
+                    {activeTab === 'tuner' && (() => {
+                        const tMap = tunings[tuning] || tunings.DG;
+                        const inTune = tunerFreq > 0 && Math.abs(tunerCents) <= 5;
+                        const toneClass = tunerFreq <= 0
+                            ? 'silent'
+                            : (inTune ? 'in-tune' : (tunerCents > 0 ? 'sharp' : 'flat'));
+                        const needleAngle = Math.max(-70, Math.min(70, (tunerCents / 50) * 70));
+                        const dNote = getNoteFromFrequency(tMap.d).note;
+                        const gNote = getNoteFromFrequency(tMap.g).note;
+
+                        return (
+                            <div className="gt-tuner">
+                                <div className="gt-tuner-title">Dombyra Tuner</div>
+
+                                <div className="gt-mode-row">
+                                    <button
+                                        className={`gt-mode-btn ${tunerMode === 'auto' ? 'active' : ''}`}
+                                        onClick={() => setTunerMode('auto')}
+                                    >Авто</button>
+                                    <button
+                                        className={`gt-mode-btn ${tunerMode === 'string' ? 'active' : ''}`}
+                                        onClick={() => setTunerMode('string')}
+                                    >Ішек</button>
                                 </div>
 
-                                {/* Tuner display with image */}
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, flex: 1, justifyContent: 'center' }}>
-                                    {/* SVG Dombra Peg */}
-                                    <svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))' }}>
-                                        <ellipse cx="60" cy="50" rx="35" ry="20" fill="#8B4513" stroke="#654321" strokeWidth="1" />
-                                        <circle cx="60" cy="50" r="12" fill="#654321" stroke="#3d2817" strokeWidth="1" />
-                                        <rect x="50" y="60" width="20" height="50" rx="4" fill="#A0522D" stroke="#654321" strokeWidth="1" />
-                                        <circle cx="60" cy="75" r="8" fill="#FFD700" opacity="0.6" />
+                                <div className="gt-dial-wrap">
+                                    <svg className="gt-dial-svg" viewBox="0 0 320 210" aria-hidden="true">
+                                        <defs>
+                                            <linearGradient id="gtArc" x1="0%" y1="0%" x2="100%" y2="0%">
+                                                <stop offset="0%" stopColor="#60a5fa" />
+                                                <stop offset="45%" stopColor="#bef38d" />
+                                                <stop offset="55%" stopColor="#bef38d" />
+                                                <stop offset="100%" stopColor="#fb7185" />
+                                            </linearGradient>
+                                        </defs>
+                                        {/* Arc background */}
+                                        <path
+                                            d="M40 160 A120 120 0 0 1 280 160"
+                                            fill="none"
+                                            stroke="rgba(148,163,184,0.18)"
+                                            strokeWidth="14"
+                                            strokeLinecap="round"
+                                        />
+                                        <path
+                                            d="M40 160 A120 120 0 0 1 280 160"
+                                            fill="none"
+                                            stroke="url(#gtArc)"
+                                            strokeWidth="14"
+                                            strokeLinecap="round"
+                                            opacity="0.55"
+                                        />
+                                        {/* Tick marks */}
+                                        {[-50, -25, 0, 25, 50].map((c) => {
+                                            const a = (c / 50) * 70 * Math.PI / 180;
+                                            const x1 = 160 + Math.sin(a) * 108;
+                                            const y1 = 160 - Math.cos(a) * 108;
+                                            const x2 = 160 + Math.sin(a) * 122;
+                                            const y2 = 160 - Math.cos(a) * 122;
+                                            return (
+                                                <line
+                                                    key={c}
+                                                    x1={x1} y1={y1} x2={x2} y2={y2}
+                                                    stroke={c === 0 ? '#bef38d' : 'rgba(226,232,240,0.45)'}
+                                                    strokeWidth={c === 0 ? 3 : 2}
+                                                />
+                                            );
+                                        })}
+                                        <text x="48" y="188" fill="#60a5fa" fontSize="11" fontWeight="800">♭ төмен</text>
+                                        <text x="232" y="188" fill="#fb7185" fontSize="11" fontWeight="800">өткір ♯</text>
+                                        {/* Needle */}
+                                        <g
+                                            className={`gt-needle ${inTune ? 'in-tune' : ''}`}
+                                            style={{ transform: `rotate(${needleAngle}deg)` }}
+                                        >
+                                            <line x1="160" y1="160" x2="160" y2="48" stroke={inTune ? '#bef38d' : '#f8fafc'} strokeWidth="4" strokeLinecap="round" />
+                                            <circle cx="160" cy="160" r="8" fill={inTune ? '#bef38d' : '#f8fafc'} />
+                                        </g>
                                     </svg>
 
-                                    {/* Status display */}
-                                    <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                        <div style={{ fontSize: '14px', fontWeight: 600, color: tunerCents > 5 ? '#ff6b6b' : tunerCents < -5 ? '#4dabf7' : '#bef38d' }}>
-                                            {tunerStatus}
-                                        </div>
-                                        <div style={{ fontSize: '24px', fontWeight: 800, color: '#fff', fontFamily: 'monospace' }}>
-                                            {tunerFreq > 0 ? `${tunerFreq.toFixed(1)} Hz` : '---'}
-                                        </div>
-                                        <div style={{ fontSize: '13px', color: '#aaa', fontFamily: 'monospace' }}>
-                                            {tunerCents > 0 ? '+' : ''}{tunerCents.toFixed(0)} cents
+                                    <div className="gt-center">
+                                        <div className={`gt-note ${toneClass}`}>{tunerNote}</div>
+                                        <div className={`gt-badge ${toneClass}`}>
+                                            {tunerActive ? (
+                                                <>
+                                                    <span style={{
+                                                        width: 8, height: 8, borderRadius: '50%',
+                                                        background: 'currentColor', display: 'inline-block'
+                                                    }} />
+                                                    {tunerStatus}
+                                                </>
+                                            ) : 'Микрофон өшірулі'}
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* String selector buttons */}
-                                <div style={{ display: 'flex', gap: 12, width: '100%', justifyContent: 'center', maxWidth: '300px' }}>
+                                <div className="gt-meta">
+                                    <span><strong>{tunerFreq > 0 ? tunerFreq.toFixed(1) : '—'} </strong>Hz</span>
+                                    <span>
+                                        <strong>
+                                            {tunerFreq > 0 ? `${tunerCents > 0 ? '+' : ''}${tunerCents.toFixed(0)}` : '—'}
+                                        </strong> cent
+                                    </span>
+                                </div>
+
+                                <div className="gt-strings">
                                     <button
-                                        onClick={() => setSelectedString('G')}
-                                        style={{
-                                            flex: 1,
-                                            padding: '12px',
-                                            background: selectedString === 'G' ? '#7C3AED' : '#333',
-                                            color: '#fff',
-                                            border: 'none',
-                                            borderRadius: '8px',
-                                            fontWeight: 600,
-                                            fontSize: '13px',
-                                            cursor: 'pointer',
-                                            minHeight: '44px'
-                                        }}
+                                        className={`gt-string-btn ${selectedString === 'D' ? 'active' : ''}`}
+                                        onClick={() => { setSelectedString('D'); setTunerMode('string'); }}
                                     >
-                                        УСП
+                                        <div className="gt-string-name">D · {dNote}</div>
+                                        <div className="gt-string-sub">Бас ішек · {tMap.d.toFixed(1)} Hz</div>
                                     </button>
                                     <button
-                                        onClick={() => setSelectedString('D')}
-                                        style={{
-                                            flex: 1,
-                                            padding: '12px',
-                                            background: selectedString === 'D' ? '#f0f0f0' : '#e8e8e8',
-                                            color: '#000',
-                                            border: '1px solid #ccc',
-                                            borderRadius: '8px',
-                                            fontWeight: 600,
-                                            fontSize: '13px',
-                                            cursor: 'pointer',
-                                            minHeight: '44px'
-                                        }}
+                                        className={`gt-string-btn ${selectedString === 'G' ? 'active' : ''}`}
+                                        onClick={() => { setSelectedString('G'); setTunerMode('string'); }}
                                     >
-                                        АСТМ
+                                        <div className="gt-string-name">G · {gNote}</div>
+                                        <div className="gt-string-sub">Мелодия · {tMap.g.toFixed(1)} Hz</div>
                                     </button>
                                 </div>
 
-                                {/* Action buttons */}
-                                <div style={{ display: 'flex', gap: 12, width: '100%', maxWidth: '300px' }}>
+                                <div className="gt-actions">
                                     <button
+                                        className={`gt-action-btn ${tunerActive ? 'ghost' : 'primary'}`}
                                         onClick={() => tunerActive ? stopTuner() : startTuner()}
-                                        style={{
-                                            flex: 1,
-                                            padding: '14px',
-                                            background: '#7C3AED',
-                                            color: '#fff',
-                                            border: 'none',
-                                            borderRadius: '8px',
-                                            fontWeight: 700,
-                                            fontSize: '14px',
-                                            cursor: 'pointer',
-                                            minHeight: '48px'
-                                        }}
                                     >
-                                        ОН БҰРАУ
+                                        {tunerActive ? 'Тоқтату' : 'Тыңдауды бастау'}
                                     </button>
                                     <button
-                                        onClick={() => playSynth(tunings[tuningRef.current][selectedStringRef.current.toLowerCase()])}
-                                        style={{
-                                            flex: 1,
-                                            padding: '14px',
-                                            background: '#f0f0f0',
-                                            color: '#000',
-                                            border: '1px solid #ccc',
-                                            borderRadius: '8px',
-                                            fontWeight: 700,
-                                            fontSize: '14px',
-                                            cursor: 'pointer',
-                                            minHeight: '48px'
+                                        className="gt-action-btn ghost"
+                                        onClick={() => {
+                                            unlockAudioEngine();
+                                            playSynth(tMap[selectedString.toLowerCase()]);
                                         }}
                                     >
-                                        ТЕРІС БҰРАУ
+                                        ♪ Эталон
                                     </button>
                                 </div>
+
+                                <div className="gt-hint">
+                                    {tunerMode === 'auto'
+                                        ? 'Авто: кез келген нотаны таниды (GuitarTuna сияқты). Ішекті таңдасаңыз — тек сол ішекке бұрайды.'
+                                        : `${selectedString} ішегін ойнаңыз. Төмен болса — тартыңыз, өткір болса — босатыңыз. Жасыл = тұрақты.`}
+                                    {' '}Бұрау: {tunings[tuning]?.label || 'D – G'}
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        );
+                    })()}
 
                     {activeTab === 'star' && (
                         <div className="card">
