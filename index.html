@@ -1431,62 +1431,145 @@
             width: 0;
             left: 50%;
             z-index: 5;
-            transition: transform 0.07s linear;
             pointer-events: none;
         }
 
-        .gt-needle-line {
+        /* Fixed perfect-pitch center line (does NOT move) */
+        .gt-center-line {
             position: absolute;
-            top: 34px;
+            top: 48px;
             bottom: 0;
             left: -1px;
             width: 2px;
-            background: #fff;
-            box-shadow: 0 0 8px rgba(255, 255, 255, 0.45);
+            background: rgba(226, 232, 240, 0.55);
         }
 
-        .gt-needle-head {
+        .gt-target-bubble {
             position: absolute;
-            top: 0;
+            left: 50%;
+            bottom: -6px;
+            transform: translateX(-50%);
+            min-width: 52px;
+            height: 52px;
+            padding: 0 10px;
+            border-radius: 50%;
+            background: #2a2e33;
+            border: 2px solid rgba(255, 255, 255, 0.12);
+            color: #fff;
+            font-weight: 900;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+            transition: background 0.2s, border-color 0.2s, color 0.2s;
+        }
+
+        .gt-target-bubble.in-tune {
+            background: #bef38d;
+            color: #0f172a;
+            border-color: #bef38d;
+        }
+
+        /* Moving cents indicator: RIGHT = sharp, LEFT = flat */
+        .gt-cents-meter {
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            z-index: 6;
+            transition: transform 0.08s linear;
+            pointer-events: none;
+        }
+
+        .gt-cents-bubble {
+            position: relative;
             left: 50%;
             transform: translateX(-50%);
-            width: 34px;
-            height: 34px;
-        }
-
-        .gt-needle-ring {
-            width: 34px;
-            height: 34px;
+            min-width: 44px;
+            height: 44px;
+            padding: 0 8px;
             border-radius: 50%;
-            border: 3px solid #fff;
-            box-sizing: border-box;
-            background: transparent;
-            box-shadow: 0 0 12px rgba(255, 255, 255, 0.35);
-            transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+            background: #1c1f24;
+            border: 3px solid #f5c542;
+            color: #fff;
+            font-weight: 900;
+            font-size: 16px;
+            font-family: 'JetBrains Mono', monospace;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 14px rgba(245, 197, 66, 0.35);
         }
 
-        .gt-needle.in-tune .gt-needle-ring {
+        .gt-cents-meter.in-tune .gt-cents-bubble {
             border-color: #bef38d;
-            background: rgba(190, 243, 141, 0.15);
-            box-shadow: 0 0 18px rgba(190, 243, 141, 0.65);
+            box-shadow: 0 0 16px rgba(190, 243, 141, 0.55);
+            color: #bef38d;
         }
 
-        .gt-needle-tri {
+        .gt-cents-meter.silent .gt-cents-bubble {
+            border-color: rgba(255, 255, 255, 0.25);
+            color: rgba(255, 255, 255, 0.35);
+            box-shadow: none;
+        }
+
+        .gt-cents-caret {
             position: absolute;
             left: 50%;
-            top: 28px;
+            top: 40px;
             transform: translateX(-50%);
             width: 0;
             height: 0;
             border-left: 7px solid transparent;
             border-right: 7px solid transparent;
-            border-top: 10px solid #fff;
-            filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
-            transition: border-top-color 0.2s;
+            border-top: 9px solid #f5c542;
         }
 
-        .gt-needle.in-tune .gt-needle-tri {
+        .gt-cents-meter.in-tune .gt-cents-caret {
             border-top-color: #bef38d;
+        }
+
+        .gt-cents-meter.silent .gt-cents-caret {
+            border-top-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .gt-tip {
+            position: absolute;
+            top: 58px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(20, 22, 26, 0.92);
+            color: #fff;
+            font-size: 13px;
+            font-weight: 800;
+            padding: 8px 14px;
+            border-radius: 12px;
+            white-space: nowrap;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+            opacity: 0;
+            transition: opacity 0.15s, transform 0.15s;
+            pointer-events: none;
+            z-index: 7;
+        }
+
+        .gt-tip.show {
+            opacity: 1;
+        }
+
+        /* Tip sits opposite the bubble (like GuitarTuna) */
+        .gt-tip.flat {
+            transform: translateX(calc(-50% + 56px));
+        }
+
+        .gt-tip.sharp {
+            transform: translateX(calc(-50% - 56px));
+        }
+
+        .gt-tip.in-tune {
+            background: rgba(190, 243, 141, 0.95);
+            color: #0f172a;
+            transform: translateX(-50%);
         }
 
         .gt-board {
@@ -1611,9 +1694,10 @@
         body.light-theme .gt-footer-sub { color: rgba(15, 23, 42, 0.45); }
         body.light-theme .gt-ruler span { background: rgba(15, 23, 42, 0.25); }
         body.light-theme .gt-ruler span.center { background: #0f172a; }
-        body.light-theme .gt-needle-line { background: #0f172a; }
-        body.light-theme .gt-needle-ring { border-color: #0f172a; }
-        body.light-theme .gt-needle-tri { border-top-color: #0f172a; }
+        body.light-theme .gt-center-line { background: rgba(15, 23, 42, 0.35); }
+        body.light-theme .gt-target-bubble { background: #fff; color: #0f172a; border-color: rgba(15, 23, 42, 0.12); }
+        body.light-theme .gt-cents-bubble { background: #fff; color: #0f172a; }
+        body.light-theme .gt-tip { background: #fff; color: #0f172a; }
 
         /* Premium Tuner Styling (legacy helpers kept for compatibility) */
         .tuner-container {
@@ -2333,9 +2417,9 @@
                             setTunerCents(Math.round(smoothed * 10) / 10);
                             setTunerNote(noteLabel);
                             const abs = Math.abs(smoothed);
-                            if (abs <= 5) setTunerStatus('Тұрақты');
-                            else if (smoothed > 0) setTunerStatus('Өткір — босатыңыз');
-                            else setTunerStatus('Төмен — тартыңыз');
+                            if (abs <= 5) setTunerStatus('In tune!');
+                            else if (smoothed > 0) setTunerStatus('Tune down!');
+                            else setTunerStatus('Tune up!');
                         } else {
                             tunerSmoothCentsRef.current *= 0.85;
                             setTunerFreq(0);
@@ -2857,16 +2941,29 @@
 
                     {activeTab === 'tuner' && (() => {
                         const tMap = tunings[tuning] || tunings.DG;
-                        const inTune = tunerFreq > 0 && Math.abs(tunerCents) <= 5;
-                        const toneClass = tunerFreq <= 0
-                            ? 'silent'
-                            : (inTune ? 'in-tune' : (tunerCents > 0 ? 'sharp' : 'flat'));
-                        // GuitarTuna: needle slides left (flat) / right (sharp)
-                        const needleX = Math.max(-42, Math.min(42, (tunerCents / 50) * 42));
+                        const hearing = tunerFreq > 0;
+                        const inTune = hearing && Math.abs(tunerCents) <= 5;
+                        const isSharp = hearing && tunerCents > 5;
+                        const isFlat = hearing && tunerCents < -5;
+                        const toneClass = !hearing ? 'silent' : (inTune ? 'in-tune' : (isSharp ? 'sharp' : 'flat'));
+                        // GuitarTuna: cents > 0 (sharp) → bubble RIGHT → "Tune down!"
+                        //             cents < 0 (flat)  → bubble LEFT  → "Tune up!"
+                        const meterPx = hearing ? Math.max(-130, Math.min(130, (tunerCents / 50) * 130)) : 0;
+                        const centsShown = hearing ? Math.min(99, Math.abs(Math.round(tunerCents))) : 0;
+                        const tipText = !hearing
+                            ? (tunerActive ? 'Play a string' : 'Tap to start')
+                            : (inTune ? 'In tune!' : (isSharp ? 'Tune down!' : 'Tune up!'));
+                        const targetLabel = (() => {
+                            const hz = tMap[selectedString.toLowerCase()];
+                            const info = getNoteFromFrequency(hz);
+                            const raw = info.note || selectedString;
+                            const m = raw.match(/^([A-G]#?)(-?\d+)$/);
+                            if (!m) return raw;
+                            const sub = ['₀','₁','₂','₃','₄','₅','₆','₇','₈','₉'][Number(m[2])] || m[2];
+                            return `${m[1]}${sub}`;
+                        })();
                         const ticks = [];
-                        for (let i = -10; i <= 10; i++) {
-                            ticks.push(i);
-                        }
+                        for (let i = -10; i <= 10; i++) ticks.push(i);
 
                         return (
                             <div className="gt-stage" onClick={() => { if (!tunerActive) startTuner(); }}>
@@ -2889,26 +2986,25 @@
                                     ))}
                                 </div>
 
-                                <div className="gt-footer">
-                                    <div className={`gt-footer-note ${toneClass}`}>
-                                        {tunerNote === '—' ? (selectedString || '—') : tunerNote.replace(/\d+$/, '')}
-                                    </div>
-                                    <div className="gt-footer-sub">
-                                        {tunerActive
-                                            ? (inTune ? 'IN TUNE' : (tunerFreq > 0 ? tunerStatus : 'PLAY A STRING'))
-                                            : 'TAP TO START'}
-                                    </div>
+                                {/* Moving cents bubble: right = too high, left = too low */}
+                                <div
+                                    className={`gt-cents-meter ${toneClass}`}
+                                    style={{ transform: `translateX(calc(-50% + ${meterPx}px))` }}
+                                >
+                                    <div className="gt-cents-bubble">{centsShown}</div>
+                                    <div className="gt-cents-caret" />
                                 </div>
 
-                                <div
-                                    className={`gt-needle ${inTune ? 'in-tune' : ''}`}
-                                    style={{ transform: `translateX(${needleX}%)` }}
-                                >
-                                    <div className="gt-needle-head">
-                                        <div className="gt-needle-ring" />
-                                        <div className="gt-needle-tri" />
+                                <div className={`gt-tip show ${toneClass}`}>
+                                    {tipText}
+                                </div>
+
+                                {/* Fixed center = perfect pitch */}
+                                <div className="gt-needle">
+                                    <div className="gt-center-line" />
+                                    <div className={`gt-target-bubble ${inTune ? 'in-tune' : ''}`}>
+                                        {targetLabel}
                                     </div>
-                                    <div className="gt-needle-line" />
                                 </div>
 
                                 <div className="gt-board">
@@ -2940,42 +3036,47 @@
                                                 <feDropShadow dx="0" dy="6" stdDeviation="4" floodOpacity="0.35" />
                                             </filter>
                                         </defs>
-                                        {/* Binding / outline */}
                                         <path
                                             d="M70 18 C70 18 110 8 150 18 L168 55 C175 70 178 95 176 120 L170 210 C168 235 150 248 110 252 C70 248 52 235 50 210 L44 120 C42 95 45 70 52 55 Z"
                                             fill="#f5f0e6"
                                             filter="url(#soft)"
                                         />
-                                        {/* Wood face */}
                                         <path
                                             d="M76 26 C76 26 110 16 144 26 L160 58 C166 72 169 95 167 118 L161 208 C159 228 145 238 110 242 C75 238 61 228 59 208 L53 118 C51 95 54 72 60 58 Z"
                                             fill="url(#wood)"
                                         />
-                                        {/* Slots */}
                                         <rect x="98" y="48" width="6" height="70" rx="2" fill="#3f2a14" opacity="0.85" />
                                         <rect x="116" y="48" width="6" height="70" rx="2" fill="#3f2a14" opacity="0.85" />
-                                        {/* Nut */}
                                         <rect x="78" y="236" width="64" height="8" rx="2" fill="#e7e2d6" />
-                                        {/* Strings */}
                                         <line x1="101" y1="55" x2="96" y2="240" stroke="#d1d5db" strokeWidth="1.4" />
                                         <line x1="119" y1="55" x2="124" y2="240" stroke="#d1d5db" strokeWidth="1.4" />
-                                        {/* Left tuners */}
                                         <ellipse cx="48" cy="70" rx="14" ry="9" fill="url(#chrome)" transform="rotate(-18 48 70)" />
                                         <circle cx="58" cy="66" r="6" fill="#9ca3af" stroke="#e5e7eb" strokeWidth="1" />
                                         <ellipse cx="46" cy="110" rx="14" ry="9" fill="url(#chrome)" transform="rotate(-12 46 110)" />
                                         <circle cx="56" cy="108" r="6" fill="#9ca3af" stroke="#e5e7eb" strokeWidth="1" />
                                         <ellipse cx="46" cy="150" rx="14" ry="9" fill="url(#chrome)" transform="rotate(-8 46 150)" />
                                         <circle cx="56" cy="150" r="6" fill="#9ca3af" stroke="#e5e7eb" strokeWidth="1" />
-                                        {/* Right tuners */}
                                         <ellipse cx="172" cy="70" rx="14" ry="9" fill="url(#chrome)" transform="rotate(18 172 70)" />
                                         <circle cx="162" cy="66" r="6" fill="#9ca3af" stroke="#e5e7eb" strokeWidth="1" />
                                         <ellipse cx="174" cy="110" rx="14" ry="9" fill="url(#chrome)" transform="rotate(12 174 110)" />
                                         <circle cx="164" cy="108" r="6" fill="#9ca3af" stroke="#e5e7eb" strokeWidth="1" />
                                         <ellipse cx="174" cy="150" rx="14" ry="9" fill="url(#chrome)" transform="rotate(8 174 150)" />
                                         <circle cx="164" cy="150" r="6" fill="#9ca3af" stroke="#e5e7eb" strokeWidth="1" />
-                                        {/* String windings */}
                                         <circle cx="58" cy="66" r="3" fill="#e5e7eb" />
                                         <circle cx="162" cy="66" r="3" fill="#e5e7eb" />
+                                        {/* Active string marker at nut */}
+                                        {selectedString === 'D' && (
+                                            <g>
+                                                <circle cx="96" cy="248" r="12" fill="#fff" />
+                                                <text x="96" y="252" textAnchor="middle" fontSize="12" fontWeight="800" fill="#111">D</text>
+                                            </g>
+                                        )}
+                                        {selectedString === 'G' && (
+                                            <g>
+                                                <circle cx="124" cy="248" r="12" fill="#fff" />
+                                                <text x="124" y="252" textAnchor="middle" fontSize="12" fontWeight="800" fill="#111">G</text>
+                                            </g>
+                                        )}
                                     </svg>
 
                                     <button
