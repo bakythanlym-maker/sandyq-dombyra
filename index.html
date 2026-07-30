@@ -1535,7 +1535,7 @@
 
         .gt-tip {
             position: absolute;
-            top: 58px;
+            top: 54px;
             left: 50%;
             transform: translateX(-50%);
             background: rgba(20, 22, 26, 0.92);
@@ -1570,6 +1570,64 @@
             background: rgba(190, 243, 141, 0.95);
             color: #0f172a;
             transform: translateX(-50%);
+        }
+
+        .gt-hz {
+            position: absolute;
+            top: 96px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            z-index: 6;
+            pointer-events: none;
+            font-family: 'JetBrains Mono', ui-monospace, monospace;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            color: rgba(255, 255, 255, 0.55);
+        }
+
+        .gt-hz strong {
+            color: #fff;
+            font-weight: 800;
+        }
+
+        .gt-hz.silent {
+            color: rgba(255, 255, 255, 0.28);
+        }
+
+        .gt-mode-bar {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            z-index: 8;
+            display: flex;
+            gap: 6px;
+        }
+
+        .gt-mode-btn {
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(20, 22, 26, 0.85);
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            padding: 7px 10px;
+            border-radius: 999px;
+            cursor: pointer;
+        }
+
+        .gt-mode-btn.active {
+            background: #fff;
+            color: #111;
+            border-color: #fff;
+        }
+
+        .gt-cents-bubble.check {
+            font-size: 22px;
+            color: #bef38d;
+            border-color: #bef38d;
         }
 
         .gt-board {
@@ -1698,6 +1756,10 @@
         body.light-theme .gt-target-bubble { background: #fff; color: #0f172a; border-color: rgba(15, 23, 42, 0.12); }
         body.light-theme .gt-cents-bubble { background: #fff; color: #0f172a; }
         body.light-theme .gt-tip { background: #fff; color: #0f172a; }
+        body.light-theme .gt-hz { color: rgba(15, 23, 42, 0.5); }
+        body.light-theme .gt-hz strong { color: #0f172a; }
+        body.light-theme .gt-mode-btn { background: rgba(255,255,255,0.85); color: #334155; border-color: rgba(15,23,42,0.12); }
+        body.light-theme .gt-mode-btn.active { background: #0f172a; color: #fff; }
 
         /* Premium Tuner Styling (legacy helpers kept for compatibility) */
         .tuner-container {
@@ -2061,13 +2123,16 @@
             const [tunerCents, setTunerCents] = useState(0);
             const [tunerNote, setTunerNote] = useState('—');
             const [tunerStatus, setTunerStatus] = useState('Микрофонды күтуде');
-            const [tunerMode, setTunerMode] = useState('string'); // auto | string
+            const [tunerMode, setTunerMode] = useState('auto'); // auto | string
+            const [tunerTargetHz, setTunerTargetHz] = useState(196);
             const tunerStreamRef = useRef(null);
             const tunerAnalyserRef = useRef(null);
             const tunerDataRef = useRef(null);
             const tunerRunningRef = useRef(false);
-            const tunerModeRef = useRef('string');
+            const tunerModeRef = useRef('auto');
             const tunerSmoothCentsRef = useRef(0);
+            const tunerSmoothFreqRef = useRef(0);
+            const tunerLastHeardRef = useRef(0);
             const selectedStringRef = useRef('G');
             const tuningRef = useRef(tuning);
             const [recordingTime, setRecordingTime] = useState(0);
@@ -2279,63 +2344,92 @@
             playNoteSoundRef.current = playNoteSound;
 
             const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-            const getNoteFromFrequency = (frequency) => {
-                if (frequency <= 0) return { note: '---', cents: 0, freq: 0, targetHz: 0 };
-                const noteNumber = 12 * (Math.log2(frequency / 440)) + 69;
-                const rounded = Math.round(noteNumber);
-                const noteName = noteNames[(rounded + 120) % 12];
-                const octave = Math.floor(rounded / 12) - 1;
-                const standardFreq = 440 * Math.pow(2, (rounded - 69) / 12);
-                const cents = Math.round(1200 * Math.log2(frequency / standardFreq));
-                return { note: noteName + octave, cents, freq: frequency, targetHz: standardFreq };
+
+            const midiFromHz = (hz) => 69 + 12 * Math.log2(hz / 440);
+            const hzFromMidi = (midi) => 440 * Math.pow(2, (midi - 69) / 12);
+            const noteLabelFromMidi = (midi) => {
+                const rounded = Math.round(midi);
+                return noteNames[(rounded + 120) % 12] + (Math.floor(rounded / 12) - 1);
             };
 
-            const autoCorrelate = (buffer, sampleRate, minFreq = 50, maxFreq = 1200) => {
+            // Fold pitch into nearest octave of target, return signed cents.
+            const centsToTarget = (pitchHz, targetHz) => {
+                if (!(pitchHz > 0) || !(targetHz > 0)) return 0;
+                const octaves = Math.round(Math.log2(pitchHz / targetHz));
+                const adjusted = pitchHz / Math.pow(2, octaves);
+                return 1200 * Math.log2(adjusted / targetHz);
+            };
+
+            const getNoteFromFrequency = (frequency) => {
+                if (frequency <= 0) return { note: '---', cents: 0, freq: 0, targetHz: 0 };
+                const midiExact = midiFromHz(frequency);
+                const rounded = Math.round(midiExact);
+                const standardFreq = hzFromMidi(rounded);
+                const cents = Math.round(1200 * Math.log2(frequency / standardFreq));
+                return {
+                    note: noteNames[(rounded + 120) % 12] + (Math.floor(rounded / 12) - 1),
+                    cents,
+                    freq: frequency,
+                    targetHz: standardFreq,
+                };
+            };
+
+            // YIN pitch detection — much more stable than raw ACF for strings.
+            const yinDetect = (buffer, sampleRate, threshold = 0.12) => {
                 const SIZE = buffer.length;
+                const half = Math.floor(SIZE / 2);
+                if (half < 64) return -1;
+
                 let rms = 0;
-                for (let i = 0; i < SIZE; i++) {
-                    const val = buffer[i];
-                    rms += val * val;
-                }
+                for (let i = 0; i < SIZE; i++) rms += buffer[i] * buffer[i];
                 rms = Math.sqrt(rms / SIZE);
-                if (rms < 0.003) return -1;
+                if (rms < 0.008) return -1;
 
-                const minLag = Math.floor(sampleRate / maxFreq);
-                const maxLag = Math.ceil(sampleRate / minFreq);
-                if (minLag >= maxLag || minLag >= SIZE / 2) return -1;
+                // Dombyra open strings ~110–200 Hz; allow harmonics / octaves.
+                const minFreq = 70;
+                const maxFreq = 900;
+                const tauMin = Math.max(2, Math.floor(sampleRate / maxFreq));
+                const tauMax = Math.min(half - 2, Math.ceil(sampleRate / minFreq));
 
-                const r = new Float32Array(maxLag);
-                for (let lag = minLag; lag < Math.min(maxLag, SIZE / 2); lag++) {
+                const yin = new Float32Array(tauMax + 1);
+                for (let tau = 1; tau <= tauMax; tau++) {
                     let sum = 0;
-                    for (let i = 0; i < SIZE - lag; i++) {
-                        sum += buffer[i] * buffer[i + lag];
+                    for (let i = 0; i < half; i++) {
+                        const d = buffer[i] - buffer[i + tau];
+                        sum += d * d;
                     }
-                    r[lag] = sum;
+                    yin[tau] = sum;
                 }
 
-                let d = minLag;
-                while (d < maxLag - 1 && r[d] > r[d + 1]) d++;
-
-                let bestPos = -1;
-                let bestVal = -Infinity;
-                for (let i = d; i < Math.min(maxLag, SIZE / 2); i++) {
-                    if (r[i] > bestVal) {
-                        bestVal = r[i];
-                        bestPos = i;
-                    }
+                yin[0] = 1;
+                let running = 0;
+                for (let tau = 1; tau <= tauMax; tau++) {
+                    running += yin[tau];
+                    yin[tau] = running > 0 ? (yin[tau] * tau) / running : 1;
                 }
 
-                if (bestPos <= minLag || bestVal / (rms * rms) < 0.9) return -1;
+                let tauEstimate = -1;
+                for (let tau = tauMin; tau <= tauMax; tau++) {
+                    if (yin[tau] < threshold) {
+                        while (tau + 1 <= tauMax && yin[tau + 1] < yin[tau]) tau++;
+                        tauEstimate = tau;
+                        break;
+                    }
+                }
+                if (tauEstimate < 0) return -1;
 
-                if (bestPos > maxLag - 2) return sampleRate / bestPos;
+                const x0 = yin[tauEstimate - 1] ?? yin[tauEstimate];
+                const x1 = yin[tauEstimate];
+                const x2 = yin[tauEstimate + 1] ?? yin[tauEstimate];
+                const denom = 2 * (2 * x1 - x0 - x2);
+                const betterTau = denom ? tauEstimate + (x2 - x0) / denom : tauEstimate;
+                if (!(betterTau > 0)) return -1;
 
-                const x1 = r[bestPos - 1];
-                const x2 = r[bestPos];
-                const x3 = r[bestPos + 1];
-                const a = (x1 + x3 - 2 * x2) / 2;
-                const b = (x3 - x1) / 2;
-                const peak = bestPos + (a ? -b / (2 * a) : 0);
-                return Math.max(minFreq, Math.min(maxFreq, sampleRate / peak));
+                const freq = sampleRate / betterTau;
+                if (freq < minFreq || freq > maxFreq) return -1;
+                // Confidence proxy: lower yin[tau] is better.
+                if (yin[tauEstimate] > threshold * 1.35) return -1;
+                return freq;
             };
 
             const startTuner = async () => {
@@ -2359,8 +2453,9 @@
                     tunerStreamRef.current = stream;
                     const source = ctx.createMediaStreamSource(stream);
                     const analyser = ctx.createAnalyser();
-                    analyser.fftSize = 4096;
-                    analyser.smoothingTimeConstant = 0.8;
+                    // Larger buffer + no smoothing → cleaner fundamental for YIN.
+                    analyser.fftSize = 2048;
+                    analyser.smoothingTimeConstant = 0;
                     source.connect(analyser);
                     tunerAnalyserRef.current = analyser;
                     tunerDataRef.current = new Float32Array(analyser.fftSize);
@@ -2368,64 +2463,83 @@
                     setTunerActive(true);
                     setTunerStatus('Ойнаңыз...');
 
+                    let frame = 0;
                     const update = () => {
                         if (!tunerRunningRef.current || !tunerAnalyserRef.current) return;
+                        frame++;
+                        // YIN every other frame — keeps UI smooth on phones.
+                        if (frame % 2 === 1) {
+                            requestAnimationFrame(update);
+                            return;
+                        }
                         tunerAnalyserRef.current.getFloatTimeDomainData(tunerDataRef.current);
-                        const pitch = autoCorrelate(tunerDataRef.current, ctx.sampleRate);
+                        const pitch = yinDetect(tunerDataRef.current, ctx.sampleRate);
+                        const now = performance.now();
 
                         if (pitch > 0) {
+                            tunerLastHeardRef.current = now;
+                            // Mild frequency smoothing so Hz readout doesn't flicker.
+                            const prevF = tunerSmoothFreqRef.current || pitch;
+                            const smoothF = prevF * 0.55 + pitch * 0.45;
+                            tunerSmoothFreqRef.current = smoothF;
+
                             const mode = tunerModeRef.current;
                             const tMap = tunings[tuningRef.current] || tunings.DG;
                             let targetHz;
                             let noteLabel;
                             let cents;
+                            let stringKey = selectedStringRef.current;
 
                             if (mode === 'string') {
-                                const s = selectedStringRef.current;
-                                targetHz = tMap[s.toLowerCase()];
-                                let adjusted = pitch;
-                                let ratio = adjusted / targetHz;
-                                while (ratio > Math.SQRT2) { adjusted /= 2; ratio = adjusted / targetHz; }
-                                while (ratio < 1 / Math.SQRT2) { adjusted *= 2; ratio = adjusted / targetHz; }
-                                cents = 1200 * Math.log2(adjusted / targetHz);
-                                const midi = Math.round(69 + 12 * Math.log2(targetHz / 440));
-                                noteLabel = noteNames[(midi + 120) % 12] + (Math.floor(midi / 12) - 1);
+                                stringKey = selectedStringRef.current;
+                                targetHz = tMap[stringKey.toLowerCase()];
+                                cents = centsToTarget(smoothF, targetHz);
+                                noteLabel = noteLabelFromMidi(midiFromHz(targetHz));
                             } else {
-                                // GuitarTuna-style chromatic auto: nearest equal-tempered note.
-                                const midiExact = 69 + 12 * Math.log2(pitch / 440);
-                                const midiRound = Math.round(midiExact);
-                                cents = (midiExact - midiRound) * 100;
-                                noteLabel = noteNames[(midiRound + 120) % 12] + (Math.floor(midiRound / 12) - 1);
-                                targetHz = 440 * Math.pow(2, (midiRound - 69) / 12);
-
-                                // Soft-highlight closest dombyra open string.
-                                const dCents = Math.abs(1200 * Math.log2(pitch / tMap.d));
-                                const gCents = Math.abs(1200 * Math.log2(pitch / tMap.g));
-                                const nearest = (dCents % 1200 < gCents % 1200) ? 'D' : 'G';
-                                if (Math.min(dCents % 1200, gCents % 1200) < 40 && selectedStringRef.current !== nearest) {
-                                    selectedStringRef.current = nearest;
-                                    setSelectedString(nearest);
+                                // GuitarTuna Auto: lock onto nearest open string by cents.
+                                const dCents = centsToTarget(smoothF, tMap.d);
+                                const gCents = centsToTarget(smoothF, tMap.g);
+                                if (Math.abs(dCents) <= Math.abs(gCents)) {
+                                    stringKey = 'D';
+                                    cents = dCents;
+                                    targetHz = tMap.d;
+                                } else {
+                                    stringKey = 'G';
+                                    cents = gCents;
+                                    targetHz = tMap.g;
+                                }
+                                noteLabel = noteLabelFromMidi(midiFromHz(targetHz));
+                                if (selectedStringRef.current !== stringKey) {
+                                    selectedStringRef.current = stringKey;
+                                    setSelectedString(stringKey);
                                 }
                             }
 
-                            // Smooth needle so it doesn't jitter like a cheap meter.
+                            // Smooth cents for the needle (GT feels damped, not jittery).
                             const prev = tunerSmoothCentsRef.current;
-                            const smoothed = prev * 0.65 + cents * 0.35;
+                            const smoothed = prev * 0.72 + cents * 0.28;
                             tunerSmoothCentsRef.current = smoothed;
 
-                            setTunerFreq(Math.round(pitch * 10) / 10);
+                            setTunerFreq(Math.round(smoothF * 10) / 10);
+                            setTunerTargetHz(Math.round(targetHz * 100) / 100);
                             setTunerCents(Math.round(smoothed * 10) / 10);
                             setTunerNote(noteLabel);
+
                             const abs = Math.abs(smoothed);
+                            // Soft in-tune like GT InTuneRatio (~±5 cents hard lock).
                             if (abs <= 5) setTunerStatus('In tune!');
                             else if (smoothed > 0) setTunerStatus('Tune down!');
                             else setTunerStatus('Tune up!');
                         } else {
-                            tunerSmoothCentsRef.current *= 0.85;
-                            setTunerFreq(0);
-                            setTunerCents(Math.round(tunerSmoothCentsRef.current));
-                            setTunerNote('—');
-                            setTunerStatus('Дыбыс жоқ');
+                            // Hold last reading briefly (GT keeps noteOn for ~1s of silence).
+                            if (now - tunerLastHeardRef.current > 700) {
+                                tunerSmoothCentsRef.current *= 0.8;
+                                tunerSmoothFreqRef.current = 0;
+                                setTunerFreq(0);
+                                setTunerCents(Math.round(tunerSmoothCentsRef.current * 10) / 10);
+                                setTunerNote('—');
+                                setTunerStatus('Play a string');
+                            }
                         }
 
                         requestAnimationFrame(update);
@@ -2446,6 +2560,8 @@
                 setTunerNote('—');
                 setTunerStatus('Тюнер тоқтатылды');
                 tunerSmoothCentsRef.current = 0;
+                tunerSmoothFreqRef.current = 0;
+                tunerLastHeardRef.current = 0;
                 if (tunerStreamRef.current) {
                     tunerStreamRef.current.getTracks().forEach(track => track.stop());
                     tunerStreamRef.current = null;
@@ -2946,15 +3062,17 @@
                         const isSharp = hearing && tunerCents > 5;
                         const isFlat = hearing && tunerCents < -5;
                         const toneClass = !hearing ? 'silent' : (inTune ? 'in-tune' : (isSharp ? 'sharp' : 'flat'));
-                        // GuitarTuna: cents > 0 (sharp) → bubble RIGHT → "Tune down!"
-                        //             cents < 0 (flat)  → bubble LEFT  → "Tune up!"
-                        const meterPx = hearing ? Math.max(-130, Math.min(130, (tunerCents / 50) * 130)) : 0;
-                        const centsShown = hearing ? Math.min(99, Math.abs(Math.round(tunerCents))) : 0;
+                        // GuitarTuna.com exact mapping:
+                        // percentFromNote = round(cents), translateX = clamp(cents/16, ±12.5) em
+                        const meterEm = hearing
+                            ? Math.max(-12.5, Math.min(12.5, tunerCents / 16))
+                            : 0;
+                        const centsShown = hearing ? Math.round(Math.abs(tunerCents)) : 0;
                         const tipText = !hearing
                             ? (tunerActive ? 'Play a string' : 'Tap to start')
                             : (inTune ? 'In tune!' : (isSharp ? 'Tune down!' : 'Tune up!'));
                         const targetLabel = (() => {
-                            const hz = tMap[selectedString.toLowerCase()];
+                            const hz = tunerTargetHz || tMap[selectedString.toLowerCase()];
                             const info = getNoteFromFrequency(hz);
                             const raw = info.note || selectedString;
                             const m = raw.match(/^([A-G]#?)(-?\d+)$/);
@@ -2967,6 +3085,17 @@
 
                         return (
                             <div className="gt-stage" onClick={() => { if (!tunerActive) startTuner(); }}>
+                                <div className="gt-mode-bar" onClick={(e) => e.stopPropagation()}>
+                                    <button
+                                        className={`gt-mode-btn ${tunerMode === 'auto' ? 'active' : ''}`}
+                                        onClick={() => setTunerMode('auto')}
+                                    >Auto</button>
+                                    <button
+                                        className={`gt-mode-btn ${tunerMode === 'string' ? 'active' : ''}`}
+                                        onClick={() => setTunerMode('string')}
+                                    >Manual</button>
+                                </div>
+
                                 <button
                                     className={`gt-mic-btn ${tunerActive ? 'live' : ''}`}
                                     onClick={(e) => {
@@ -2986,17 +3115,33 @@
                                     ))}
                                 </div>
 
-                                {/* Moving cents bubble: right = too high, left = too low */}
+                                {/* Moving cents bubble — RIGHT = sharp, LEFT = flat */}
                                 <div
                                     className={`gt-cents-meter ${toneClass}`}
-                                    style={{ transform: `translateX(calc(-50% + ${meterPx}px))` }}
+                                    style={{ transform: `translateX(calc(-50% + ${meterEm}em))` }}
                                 >
-                                    <div className="gt-cents-bubble">{centsShown}</div>
+                                    <div className={`gt-cents-bubble ${inTune ? 'check' : ''}`}>
+                                        {inTune ? '✓' : centsShown}
+                                    </div>
                                     <div className="gt-cents-caret" />
                                 </div>
 
                                 <div className={`gt-tip show ${toneClass}`}>
                                     {tipText}
+                                </div>
+
+                                <div className={`gt-hz ${hearing ? '' : 'silent'}`}>
+                                    {hearing ? (
+                                        <>
+                                            <strong>{tunerFreq.toFixed(1)} Hz</strong>
+                                            {' → '}
+                                            {Number(tunerTargetHz).toFixed(1)} Hz
+                                            {' · '}
+                                            {tunerCents > 0 ? '+' : ''}{Math.round(tunerCents)}¢
+                                        </>
+                                    ) : (
+                                        <>target {Number(tunerTargetHz || tMap[selectedString.toLowerCase()]).toFixed(1)} Hz</>
+                                    )}
                                 </div>
 
                                 {/* Fixed center = perfect pitch */}
@@ -3014,6 +3159,7 @@
                                             e.stopPropagation();
                                             setSelectedString('D');
                                             setTunerMode('string');
+                                            setTunerTargetHz(tMap.d);
                                             unlockAudioEngine();
                                             playSynth(tMap.d);
                                         }}
@@ -3064,7 +3210,6 @@
                                         <circle cx="164" cy="150" r="6" fill="#9ca3af" stroke="#e5e7eb" strokeWidth="1" />
                                         <circle cx="58" cy="66" r="3" fill="#e5e7eb" />
                                         <circle cx="162" cy="66" r="3" fill="#e5e7eb" />
-                                        {/* Active string marker at nut */}
                                         {selectedString === 'D' && (
                                             <g>
                                                 <circle cx="96" cy="248" r="12" fill="#fff" />
@@ -3085,6 +3230,7 @@
                                             e.stopPropagation();
                                             setSelectedString('G');
                                             setTunerMode('string');
+                                            setTunerTargetHz(tMap.g);
                                             unlockAudioEngine();
                                             playSynth(tMap.g);
                                         }}
