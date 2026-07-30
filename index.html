@@ -32,10 +32,40 @@
             min-height: 100vh;
             color: var(--text-color, #080808);
             overflow-x: hidden;
-            font-weight: 500;
+            font-weight: 700;
             -webkit-font-smoothing: antialiased;
             -webkit-touch-callout: none;
             transition: background 0.3s, color 0.3s;
+        }
+
+        /* All Kazakh UI copy reads bold; English mode stays medium. */
+        body.lang-kk,
+        body.lang-kk button,
+        body.lang-kk input,
+        body.lang-kk textarea,
+        body.lang-kk select,
+        body.lang-kk .card-title,
+        body.lang-kk .section-title,
+        body.lang-kk .nav-pill,
+        body.lang-kk .tuning-btn,
+        body.lang-kk .string-label,
+        body.lang-kk td,
+        body.lang-kk th,
+        body.lang-kk h1,
+        body.lang-kk h2,
+        body.lang-kk h3,
+        body.lang-kk h4,
+        body.lang-kk p,
+        body.lang-kk span,
+        body.lang-kk label,
+        body.lang-kk a {
+            font-weight: 700;
+        }
+
+        body.lang-kk .note-block,
+        body.lang-kk .brand-title,
+        body.lang-kk .logo-text {
+            font-weight: 900;
         }
 
         body.dark-theme {
@@ -1683,7 +1713,7 @@
             const [sensitivity, setSensitivity] = useState(0.08);
             const [minDuration, setMinDuration] = useState(30);
             const [tuning, setTuning] = useState('DG');
-            const [quality, setQuality] = useState('pro');
+            const [quality, setQuality] = useState('fast');
             const [audioUrl, setAudioUrl] = useState(null);
             const [currentTime, setCurrentTime] = useState(0);
             const [isPlaying, setIsPlaying] = useState(false);
@@ -1718,12 +1748,10 @@
 
             useEffect(() => {
                 localStorage.setItem('dombyra_theme', theme);
-                document.body.className = theme + '-theme';
-            }, [theme]);
-
-            useEffect(() => {
                 localStorage.setItem('dombyra_lang', language);
-            }, [language]);
+                document.body.className = `${theme}-theme lang-${language}`;
+                document.documentElement.lang = language === 'en' ? 'en' : 'kk';
+            }, [theme, language]);
 
             const audioRef = useRef(null);
             const fileRef = useRef(null);
