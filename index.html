@@ -1674,11 +1674,11 @@
             align-items: start;
             gap: 4px;
             max-width: 420px;
-            min-height: 220px;
+            min-height: 340px;
         }
 
         .gt-string-pill {
-            margin-top: 56px;
+            margin-top: 36px;
             min-width: 78px;
             height: 44px;
             padding: 0 14px;
@@ -1717,42 +1717,16 @@
         .gt-headstock,
         .gt-dombyra {
             width: 100%;
-            max-width: 168px;
+            max-width: 118px;
+            height: auto;
             margin: 0 auto;
             display: block;
             filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.5));
         }
 
         .gt-dombyra-photo-wrap {
-            position: relative;
-            width: 100%;
-            max-width: 200px;
-            margin: 8px auto 0;
-            filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.45));
+            display: none;
         }
-
-        .gt-dombyra-photo {
-            width: 100%;
-            height: auto;
-            display: block;
-            object-fit: contain;
-            -webkit-user-drag: none;
-            user-select: none;
-        }
-
-        .gt-dombyra-photo-wrap .gt-string-glow {
-            position: absolute;
-            top: 42%;
-            bottom: 4%;
-            width: 3px;
-            border-radius: 2px;
-            background: #7c3aed;
-            opacity: 0.55;
-            pointer-events: none;
-        }
-
-        .gt-dombyra-photo-wrap .gt-string-glow.usti { left: 42%; }
-        .gt-dombyra-photo-wrap .gt-string-glow.asty { left: 56%; }
 
         .gt-burau-bar {
             position: relative;
@@ -3375,17 +3349,143 @@
                                         title={`ҮСТІ · G · ${tMap.g.toFixed(1)} Hz`}
                                     >ҮСТІ</button>
 
-                                    {/* Нақты домбыра басы + құлақтар */}
-                                    <div className="gt-dombyra-photo-wrap">
-                                        <img
-                                            className="gt-dombyra-photo"
-                                            src="assets/dombyra-kulak.png"
-                                            alt="Домбыра құлағы"
-                                            draggable={false}
+                                    {/* Өзіміз салган домбыра — референс суретке ұқсас */}
+                                    <svg className="gt-dombyra" viewBox="0 0 160 460" xmlns="http://www.w3.org/2000/svg" aria-label="Домбыра">
+                                        <defs>
+                                            <linearGradient id="dbSide" x1="0" y1="0" x2="1" y2="0">
+                                                <stop offset="0%" stopColor="#5c2e16" />
+                                                <stop offset="50%" stopColor="#8b4a28" />
+                                                <stop offset="100%" stopColor="#5c2e16" />
+                                            </linearGradient>
+                                            <linearGradient id="dbFace" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#f0ddb0" />
+                                                <stop offset="45%" stopColor="#e3c58e" />
+                                                <stop offset="100%" stopColor="#c9a86a" />
+                                            </linearGradient>
+                                            <linearGradient id="dbNeckWood" x1="0" y1="0" x2="1" y2="0">
+                                                <stop offset="0%" stopColor="#7a3f22" />
+                                                <stop offset="50%" stopColor="#a05a32" />
+                                                <stop offset="100%" stopColor="#6e3718" />
+                                            </linearGradient>
+                                            <linearGradient id="dbPeg" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#d4a574" />
+                                                <stop offset="100%" stopColor="#8a5530" />
+                                            </linearGradient>
+                                            <linearGradient id="dbHead" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#e8d2a0" />
+                                                <stop offset="100%" stopColor="#b8925a" />
+                                            </linearGradient>
+                                            <filter id="dbSoft" x="-25%" y="-6%" width="150%" height="115%">
+                                                <feDropShadow dx="0" dy="5" stdDeviation="3.5" floodOpacity="0.5" />
+                                            </filter>
+                                        </defs>
+
+                                        {/* Side rim (dark wood behind face) */}
+                                        <path
+                                            d="M58 268
+                                               C36 278 24 308 26 342
+                                               C28 385 55 428 80 448
+                                               C105 428 132 385 134 342
+                                               C136 308 124 278 102 268 Z"
+                                            fill="url(#dbSide)"
+                                            filter="url(#dbSoft)"
                                         />
-                                        {selectedString === 'G' && <span className="gt-string-glow usti" />}
-                                        {selectedString === 'D' && <span className="gt-string-glow asty" />}
-                                    </div>
+                                        {/* Soundboard — pear / teardrop */}
+                                        <path
+                                            d="M62 272
+                                               C44 282 34 308 35 340
+                                               C37 378 58 416 80 434
+                                               C102 416 123 378 125 340
+                                               C126 308 116 282 98 272 Z"
+                                            fill="url(#dbFace)"
+                                        />
+                                        {/* Wood grain hint */}
+                                        <path d="M72 290 L74 420" stroke="#c9a86a" strokeWidth="0.6" opacity="0.35" />
+                                        <path d="M88 288 L88 430" stroke="#c9a86a" strokeWidth="0.5" opacity="0.28" />
+                                        <path d="M104 292 L102 418" stroke="#c9a86a" strokeWidth="0.6" opacity="0.35" />
+
+                                        {/* Shoulder scalloped plate */}
+                                        <path
+                                            d="M60 268 L100 268 L100 286
+                                               C94 294 88 292 80 298
+                                               C72 292 66 294 60 286 Z"
+                                            fill="#3a2212"
+                                        />
+                                        <path d="M62 284 C68 290 74 288 80 294 C86 288 92 290 98 284" fill="none" stroke="#1a1008" strokeWidth="1" />
+
+                                        {/* Flower soundhole — 4 petals + center */}
+                                        <g transform="translate(80 348)">
+                                            <ellipse cx="0" cy="-13" rx="6.5" ry="11" fill="#2e1a0e" />
+                                            <ellipse cx="0" cy="13" rx="6.5" ry="11" fill="#2e1a0e" />
+                                            <ellipse cx="-13" cy="0" rx="11" ry="6.5" fill="#2e1a0e" />
+                                            <ellipse cx="13" cy="0" rx="11" ry="6.5" fill="#2e1a0e" />
+                                            <circle cx="0" cy="0" r="6.5" fill="#1a1008" />
+                                            <circle cx="0" cy="0" r="3.8" fill="#0a0604" />
+                                        </g>
+
+                                        {/* Bottom leaf / crown ornament */}
+                                        <path
+                                            d="M80 426
+                                               C68 416 60 402 62 390
+                                               C70 396 76 402 80 412
+                                               C84 402 90 396 98 390
+                                               C100 402 92 416 80 426 Z"
+                                            fill="#2e1a0e"
+                                        />
+                                        {/* Bridge */}
+                                        <rect x="64" y="404" width="32" height="3.5" rx="1" fill="#f5f0e4" />
+
+                                        {/* Neck wood sides */}
+                                        <path d="M72 44 L88 44 L92 270 L68 270 Z" fill="url(#dbNeckWood)" />
+                                        {/* Dark fingerboard */}
+                                        <rect x="73.5" y="48" width="13" height="220" rx="1" fill="#1a1a1a" />
+                                        {/* White diamond inlays (point-to-point) */}
+                                        {[60, 82, 104, 126, 148, 170, 192, 214, 236].map((y, i) => (
+                                            <g key={y}>
+                                                <polygon points={`80,${y - 9} 85.5,${y} 80,${y + 9} 74.5,${y}`} fill="#f2f0ea" />
+                                                {i % 2 === 0 && <circle cx="80" cy={y} r="1.5" fill="#1a1a1a" />}
+                                            </g>
+                                        ))}
+
+                                        {/* Headstock — small bulbous crown */}
+                                        <path
+                                            d="M80 6
+                                               C92 6 102 14 102 26
+                                               L100 46
+                                               L88 50
+                                               L72 50
+                                               L60 46
+                                               L58 26
+                                               C58 14 68 6 80 6 Z"
+                                            fill="url(#dbHead)"
+                                            filter="url(#dbSoft)"
+                                        />
+                                        <ellipse cx="80" cy="22" rx="14" ry="10" fill="#c9a86a" opacity="0.25" />
+
+                                        {/* Құлақ — T-shaped pegs on the right (as in photo) */}
+                                        <g>
+                                            <rect x="98" y="20" width="22" height="4.5" rx="1.5" fill="url(#dbPeg)" />
+                                            <ellipse cx="122" cy="22.2" rx="8.5" ry="6.5" fill="url(#dbPeg)" />
+                                            <ellipse cx="122" cy="22.2" rx="4.5" ry="3.5" fill="#e0c090" opacity="0.45" />
+                                            <rect x="98" y="34" width="22" height="4.5" rx="1.5" fill="url(#dbPeg)" />
+                                            <ellipse cx="122" cy="36.2" rx="8.5" ry="6.5" fill="url(#dbPeg)" />
+                                            <ellipse cx="122" cy="36.2" rx="4.5" ry="3.5" fill="#e0c090" opacity="0.45" />
+                                        </g>
+
+                                        {/* Nut */}
+                                        <rect x="72" y="48" width="16" height="3.5" rx="0.8" fill="#0d0d0d" />
+
+                                        {/* Two strings */}
+                                        <line x1="76.5" y1="24" x2="74" y2="406" stroke="#e8eaed" strokeWidth="1.15" />
+                                        <line x1="83.5" y1="36" x2="86" y2="406" stroke="#e8eaed" strokeWidth="1.15" />
+
+                                        {selectedString === 'G' && (
+                                            <line x1="76.5" y1="52" x2="74" y2="402" stroke="#7c3aed" strokeWidth="2.6" opacity="0.55" />
+                                        )}
+                                        {selectedString === 'D' && (
+                                            <line x1="83.5" y1="52" x2="86" y2="402" stroke="#7c3aed" strokeWidth="2.6" opacity="0.55" />
+                                        )}
+                                    </svg>
 
                                     <button
                                         className={`gt-string-pill asty ${selectedString === 'D' ? 'active' : ''} ${selectedString === 'D' && inTune ? 'in-tune-glow' : ''}`}
