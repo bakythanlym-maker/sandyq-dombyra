@@ -1674,7 +1674,7 @@
             align-items: start;
             gap: 4px;
             max-width: 420px;
-            min-height: 280px;
+            min-height: 220px;
         }
 
         .gt-string-pill {
@@ -1722,6 +1722,37 @@
             display: block;
             filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.5));
         }
+
+        .gt-dombyra-photo-wrap {
+            position: relative;
+            width: 100%;
+            max-width: 200px;
+            margin: 8px auto 0;
+            filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.45));
+        }
+
+        .gt-dombyra-photo {
+            width: 100%;
+            height: auto;
+            display: block;
+            object-fit: contain;
+            -webkit-user-drag: none;
+            user-select: none;
+        }
+
+        .gt-dombyra-photo-wrap .gt-string-glow {
+            position: absolute;
+            top: 42%;
+            bottom: 4%;
+            width: 3px;
+            border-radius: 2px;
+            background: #7c3aed;
+            opacity: 0.55;
+            pointer-events: none;
+        }
+
+        .gt-dombyra-photo-wrap .gt-string-glow.usti { left: 42%; }
+        .gt-dombyra-photo-wrap .gt-string-glow.asty { left: 56%; }
 
         .gt-burau-bar {
             position: relative;
@@ -3344,89 +3375,17 @@
                                         title={`ҮСТІ · G · ${tMap.g.toFixed(1)} Hz`}
                                     >ҮСТІ</button>
 
-                                    {/* Dombyra headstock + neck only (like Kazakh tuner apps) */}
-                                    <svg className="gt-dombyra" viewBox="0 0 160 300" xmlns="http://www.w3.org/2000/svg" aria-label="Домбыра">
-                                        <defs>
-                                            <linearGradient id="domFace" x1="0" y1="0" x2="1" y2="1">
-                                                <stop offset="0%" stopColor="#e8c896" />
-                                                <stop offset="45%" stopColor="#c99555" />
-                                                <stop offset="100%" stopColor="#8f5a2a" />
-                                            </linearGradient>
-                                            <linearGradient id="domSide" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stopColor="#a06732" />
-                                                <stop offset="100%" stopColor="#6b3d18" />
-                                            </linearGradient>
-                                            <linearGradient id="domPeg" x1="0" y1="0" x2="1" y2="1">
-                                                <stop offset="0%" stopColor="#f3e0b8" />
-                                                <stop offset="100%" stopColor="#b8894a" />
-                                            </linearGradient>
-                                            <filter id="domSoft" x="-30%" y="-10%" width="160%" height="130%">
-                                                <feDropShadow dx="0" dy="6" stdDeviation="4" floodOpacity="0.35" />
-                                            </filter>
-                                        </defs>
-
-                                        {/* Neck sides */}
-                                        <path d="M62 78 L98 78 L104 298 L56 298 Z" fill="url(#domSide)" filter="url(#domSoft)" />
-                                        {/* Fingerboard */}
-                                        <path d="M66 80 L94 80 L98 298 L62 298 Z" fill="url(#domFace)" />
-                                        {/* Frets */}
-                                        {[100, 118, 136, 154, 172, 190, 208, 226, 244, 262, 280].map((y) => (
-                                            <line key={y} x1="64" y1={y} x2="96" y2={y} stroke="#5c3a1e" strokeWidth="1.4" opacity="0.55" />
-                                        ))}
-
-                                        {/* Spade / shovel peghead */}
-                                        <path
-                                            d="M80 6
-                                               C92 6 108 14 112 28
-                                               L114 70
-                                               L98 80
-                                               L62 80
-                                               L46 70
-                                               L48 28
-                                               C52 14 68 6 80 6 Z"
-                                            fill="url(#domFace)"
-                                            filter="url(#domSoft)"
+                                    {/* Нақты домбыра басы + құлақтар */}
+                                    <div className="gt-dombyra-photo-wrap">
+                                        <img
+                                            className="gt-dombyra-photo"
+                                            src="assets/dombyra-kulak.png"
+                                            alt="Домбыра құлағы"
+                                            draggable={false}
                                         />
-                                        {/* Head edge bevel */}
-                                        <path
-                                            d="M80 12
-                                               C90 12 102 18 105 28
-                                               L106 66
-                                               L96 74
-                                               L64 74
-                                               L54 66
-                                               L55 28
-                                               C58 18 70 12 80 12 Z"
-                                            fill="none"
-                                            stroke="#6b3d18"
-                                            strokeWidth="1.2"
-                                            opacity="0.35"
-                                        />
-
-                                        {/* Left peg (ҮСТІ) — higher */}
-                                        <ellipse cx="40" cy="36" rx="16" ry="9" fill="url(#domPeg)" transform="rotate(-28 40 36)" />
-                                        <circle cx="48" cy="32" r="5" fill="#7a4e22" />
-                                        <circle cx="48" cy="32" r="2" fill="#d9b57a" />
-                                        {/* Right peg (АСТЫ) — lower */}
-                                        <ellipse cx="120" cy="52" rx="16" ry="9" fill="url(#domPeg)" transform="rotate(28 120 52)" />
-                                        <circle cx="112" cy="48" r="5" fill="#7a4e22" />
-                                        <circle cx="112" cy="48" r="2" fill="#d9b57a" />
-
-                                        {/* Nut */}
-                                        <rect x="62" y="78" width="36" height="5" rx="1" fill="#efe2c8" />
-
-                                        {/* Two strings from pegs down the neck */}
-                                        <path d="M50 34 C58 42 68 70 70 82 L68 298" fill="none" stroke="#f3f4f6" strokeWidth="1.6" />
-                                        <path d="M110 50 C102 58 94 70 90 82 L92 298" fill="none" stroke="#f3f4f6" strokeWidth="1.6" />
-
-                                        {/* Active string glow on neck */}
-                                        {selectedString === 'G' && (
-                                            <line x1="68" y1="90" x2="68" y2="290" stroke="#7c3aed" strokeWidth="3" opacity="0.55" />
-                                        )}
-                                        {selectedString === 'D' && (
-                                            <line x1="92" y1="90" x2="92" y2="290" stroke="#7c3aed" strokeWidth="3" opacity="0.55" />
-                                        )}
-                                    </svg>
+                                        {selectedString === 'G' && <span className="gt-string-glow usti" />}
+                                        {selectedString === 'D' && <span className="gt-string-glow asty" />}
+                                    </div>
 
                                     <button
                                         className={`gt-string-pill asty ${selectedString === 'D' ? 'active' : ''} ${selectedString === 'D' && inTune ? 'in-tune-glow' : ''}`}
