@@ -2252,7 +2252,8 @@
             const tunerSourceRef = useRef(null);
             const tunerAnalyserRef = useRef(null);
             const tunerDataRef = useRef(null);
-            const tunerCorrRef = useRef(null);
+            const tunerYinRef = useRef(null);
+            const tunerFreqHistRef = useRef([]);
             const tunerRunningRef = useRef(false);
             const tunerRafRef = useRef(0);
             const tunerModeRef = useRef('auto');
@@ -2480,12 +2481,14 @@
                 return noteNames[(rounded + 120) % 12] + (Math.floor(rounded / 12) - 1);
             };
 
-            // Fold pitch into nearest octave of target, return signed cents.
+            // Fold pitch into nearest octave of target, return signed cents (−600…+600).
             const centsToTarget = (pitchHz, targetHz) => {
                 if (!(pitchHz > 0) || !(targetHz > 0)) return 0;
-                const octaves = Math.round(Math.log2(pitchHz / targetHz));
-                const adjusted = pitchHz / Math.pow(2, octaves);
-                return 1200 * Math.log2(adjusted / targetHz);
+                let ratio = pitchHz / targetHz;
+                // Bring into ±0.5 octave around target without Math.round edge bugs.
+                while (ratio > Math.SQRT2) ratio *= 0.5;
+                while (ratio < Math.SQRT1_2) ratio *= 2;
+                return 1200 * Math.log2(ratio);
             };
 
             const getNoteFromFrequency = (frequency) => {
@@ -2502,107 +2505,117 @@
                 };
             };
 
-            // Fast autocorrelation (PitchDetect-style) — reliable for guitar/dombyra.
+            // YIN pitch detection — accurate for dombyra open strings (~110–220 Hz).
             const detectPitch = (buffer, sampleRate) => {
-                const SIZE = buffer.length;
+                // Use the newest samples only (faster + more responsive).
+                const WIN = Math.min(buffer.length, 4096);
+                const offset = buffer.length - WIN;
                 let rms = 0;
-                for (let i = 0; i < SIZE; i++) rms += buffer[i] * buffer[i];
-                rms = Math.sqrt(rms / SIZE);
-                // Sensitive enough for quiet rooms / laptop mics.
-                if (rms < 0.004) return -1;
+                for (let i = 0; i < WIN; i++) {
+                    const v = buffer[offset + i];
+                    rms += v * v;
+                }
+                rms = Math.sqrt(rms / WIN);
+                if (rms < 0.0035) return -1;
 
-                // Focus on musical fundamentals (+ one harmonic octave).
-                const minFreq = 75;
-                const maxFreq = 700;
-                const minLag = Math.max(2, Math.floor(sampleRate / maxFreq));
-                const maxLag = Math.min(Math.floor(SIZE / 2) - 2, Math.ceil(sampleRate / minFreq));
-                if (minLag >= maxLag) return -1;
+                const minFreq = 95;
+                const maxFreq = 480;
+                const tauMin = Math.max(2, Math.floor(sampleRate / maxFreq));
+                const tauMax = Math.min(Math.floor(WIN / 2) - 2, Math.ceil(sampleRate / minFreq));
+                if (tauMin >= tauMax) return -1;
 
-                let corr = tunerCorrRef.current;
-                if (!corr || corr.length < maxLag + 1) {
-                    corr = new Float32Array(maxLag + 1);
-                    tunerCorrRef.current = corr;
+                let yin = tunerYinRef.current;
+                if (!yin || yin.length < tauMax + 1) {
+                    yin = new Float32Array(tauMax + 1);
+                    tunerYinRef.current = yin;
                 }
 
-                // Normalize buffer for ACF stability.
-                let mean = 0;
-                for (let i = 0; i < SIZE; i++) mean += buffer[i];
-                mean /= SIZE;
-
-                for (let lag = minLag; lag <= maxLag; lag++) {
+                yin[0] = 1;
+                for (let tau = 1; tau <= tauMax; tau++) {
                     let sum = 0;
-                    // Stride-2 for speed; still accurate enough after interpolation.
-                    for (let i = 0; i < SIZE - lag; i += 2) {
-                        const a = buffer[i] - mean;
-                        const b = buffer[i + lag] - mean;
-                        sum += a * b;
+                    const limit = WIN - tau;
+                    // Slight stride keeps mobile FPS high without hurting cents accuracy.
+                    for (let i = 0; i < limit; i += 2) {
+                        const delta = buffer[offset + i] - buffer[offset + i + tau];
+                        sum += delta * delta;
                     }
-                    corr[lag] = sum;
+                    yin[tau] = sum;
                 }
 
-                // Walk past the decreasing slope near lag=0.
-                let d = minLag;
-                while (d < maxLag && corr[d] > corr[d + 1]) d++;
+                let running = 0;
+                for (let tau = 1; tau <= tauMax; tau++) {
+                    running += yin[tau];
+                    yin[tau] = running > 0 ? (yin[tau] * tau) / running : 1;
+                }
 
-                let bestLag = -1;
-                let bestVal = -Infinity;
-                for (let lag = d; lag <= maxLag; lag++) {
-                    if (corr[lag] > bestVal) {
-                        bestVal = corr[lag];
-                        bestLag = lag;
+                const threshold = 0.12;
+                let tauEstimate = -1;
+                for (let tau = tauMin; tau < tauMax; tau++) {
+                    if (yin[tau] < threshold) {
+                        while (tau + 1 < tauMax && yin[tau + 1] < yin[tau]) tau++;
+                        tauEstimate = tau;
+                        break;
                     }
                 }
-
-                // Reject weak periodicity (noise / speech).
-                let energy = 0;
-                for (let i = 0; i < SIZE; i += 2) {
-                    const a = buffer[i] - mean;
-                    energy += a * a;
+                if (tauEstimate < 0) {
+                    let best = tauMin;
+                    for (let tau = tauMin + 1; tau <= tauMax; tau++) {
+                        if (yin[tau] < yin[best]) best = tau;
+                    }
+                    if (yin[best] < 0.32) tauEstimate = best;
                 }
-                const conf = bestVal / (energy + 1e-9);
-                if (bestLag < 0 || conf < 0.25) return -1;
+                if (tauEstimate < 0) return -1;
 
-                // Parabolic interpolation around peak.
-                const y0 = corr[bestLag - 1] || corr[bestLag];
-                const y1 = corr[bestLag];
-                const y2 = corr[bestLag + 1] || corr[bestLag];
-                const denom = (y0 - 2 * y1 + y2);
-                const shift = denom ? (0.5 * (y0 - y2) / denom) : 0;
-                const period = bestLag + shift;
-                if (!(period > 0)) return -1;
+                const x0 = tauEstimate > 0 ? yin[tauEstimate - 1] : yin[tauEstimate];
+                const x1 = yin[tauEstimate];
+                const x2 = tauEstimate + 1 <= tauMax ? yin[tauEstimate + 1] : yin[tauEstimate];
+                const denom = (2 * x1 - x0 - x2);
+                const betterTau = denom ? tauEstimate + (x0 - x2) / (2 * denom) : tauEstimate;
+                if (!(betterTau > 0)) return -1;
 
-                const freq = sampleRate / period;
+                const freq = sampleRate / betterTau;
                 if (freq < minFreq || freq > maxFreq) return -1;
                 return freq;
             };
 
-            // Prefer fundamental near open strings (fix octave/harmonic jumps).
-            const resolveAgainstStrings = (rawHz, tMap) => {
+            const medianHz = (arr) => {
+                if (!arr.length) return -1;
+                const s = arr.slice().sort((a, b) => a - b);
+                return s[Math.floor(s.length / 2)];
+            };
+
+            // Map detected pitch → open string (ҮСТІ=G, АСТЫ=D/C), fix octave errors.
+            const resolveAgainstStrings = (rawHz, tMap, preferKey) => {
                 const targets = [
                     { key: 'D', hz: tMap.d },
                     { key: 'G', hz: tMap.g },
                 ];
-                const candidates = [rawHz, rawHz / 2, rawHz / 3, rawHz * 2]
-                    .filter((f) => f >= 70 && f <= 500);
+                // Raw + common harmonic/octave mistakes from mics.
+                const candidates = [rawHz, rawHz / 2, rawHz * 2, rawHz / 3, (rawHz * 2) / 3]
+                    .filter((f) => f >= 95 && f <= 450);
 
-                let best = {
-                    key: 'G',
-                    freq: rawHz,
-                    targetHz: tMap.g,
-                    cents: centsToTarget(rawHz, tMap.g),
-                    score: Infinity,
-                };
-
+                let best = null;
                 for (const cand of candidates) {
                     for (const t of targets) {
                         const cents = centsToTarget(cand, t.hz);
-                        const score = Math.abs(cents);
-                        if (score < best.score) {
+                        const abs = Math.abs(cents);
+                        // Prefer staying near the open-string fundamental (penalize octave folds).
+                        const octPenalty = Math.abs(Math.log2(cand / t.hz)) > 0.55 ? 40 : 0;
+                        // Slight sticky bias to currently selected string.
+                        const stick = preferKey && t.key === preferKey ? -8 : 0;
+                        const score = abs + octPenalty + stick;
+                        if (!best || score < best.score) {
                             best = { key: t.key, freq: cand, targetHz: t.hz, cents, score };
                         }
                     }
                 }
-                return best;
+                return best || {
+                    key: preferKey || 'G',
+                    freq: rawHz,
+                    targetHz: tMap[(preferKey || 'G').toLowerCase()],
+                    cents: centsToTarget(rawHz, tMap[(preferKey || 'G').toLowerCase()]),
+                    score: 999,
+                };
             };
 
             // Needle position updates every frame via DOM (React must not set `style` on this node).
@@ -2642,7 +2655,7 @@
                     tunerSourceRef.current = source;
 
                     const analyser = ctx.createAnalyser();
-                    analyser.fftSize = 4096;
+                    analyser.fftSize = 8192;
                     analyser.smoothingTimeConstant = 0;
                     source.connect(analyser);
                     tunerAnalyserRef.current = analyser;
@@ -2652,6 +2665,7 @@
                     tunerSmoothCentsRef.current = 0;
                     tunerSmoothFreqRef.current = 0;
                     tunerLastHeardRef.current = 0;
+                    tunerFreqHistRef.current = [];
                     tunerStringVotesRef.current = { key: selectedStringRef.current, n: 0 };
                     setTunerActive(true);
                     setTunerHearing(false);
@@ -2667,32 +2681,41 @@
                         const mode = tunerModeRef.current;
 
                         if (raw > 0) {
+                            const hist = tunerFreqHistRef.current;
+                            hist.push(raw);
+                            if (hist.length > 5) hist.shift();
+                            const stableRaw = hist.length >= 3 ? medianHz(hist) : raw;
                             tunerLastHeardRef.current = now;
 
-                            let pitchHz = raw;
+                            let pitchHz = stableRaw;
                             let targetHz;
                             let cents;
                             let stringKey = selectedStringRef.current;
 
                             if (mode === 'string') {
-                                // Manual: lock to selected string; fold harmonics/octaves to it.
                                 stringKey = selectedStringRef.current;
                                 targetHz = tMap[stringKey.toLowerCase()];
-                                let bestF = raw;
-                                let bestC = centsToTarget(raw, targetHz);
-                                for (const cand of [raw, raw / 2, raw / 3, raw * 2]) {
-                                    if (cand < 70 || cand > 500) continue;
+                                const otherKey = stringKey === 'G' ? 'D' : 'G';
+                                const otherHz = tMap[otherKey.toLowerCase()];
+
+                                let bestF = stableRaw;
+                                let bestC = centsToTarget(stableRaw, targetHz);
+                                for (const cand of [stableRaw, stableRaw / 2, stableRaw * 2, stableRaw / 3]) {
+                                    if (cand < 95 || cand > 450) continue;
                                     const c = centsToTarget(cand, targetHz);
                                     if (Math.abs(c) < Math.abs(bestC)) {
                                         bestF = cand;
                                         bestC = c;
                                     }
                                 }
+                                const cOther = Math.abs(centsToTarget(bestF, otherHz));
+                                if (cOther < 18 && Math.abs(bestC) > 35) {
+                                    bestC = centsToTarget(bestF, targetHz);
+                                }
                                 pitchHz = bestF;
                                 cents = bestC;
                             } else {
-                                // Auto: nearest open string (GuitarTuna), with switch hysteresis.
-                                const resolved = resolveAgainstStrings(raw, tMap);
+                                const resolved = resolveAgainstStrings(stableRaw, tMap, selectedStringRef.current);
                                 pitchHz = resolved.freq;
                                 const votes = tunerStringVotesRef.current;
                                 if (resolved.key === votes.key) votes.n += 1;
@@ -2700,7 +2723,7 @@
                                     votes.key = resolved.key;
                                     votes.n = 1;
                                 }
-                                if (votes.n >= 4) stringKey = votes.key;
+                                if (votes.n >= 3) stringKey = votes.key;
                                 else stringKey = selectedStringRef.current;
 
                                 targetHz = tMap[stringKey.toLowerCase()];
@@ -2712,20 +2735,26 @@
                                 }
                             }
 
+                            const nearD = Math.abs(centsToTarget(pitchHz, tMap.d));
+                            const nearG = Math.abs(centsToTarget(pitchHz, tMap.g));
+                            if (Math.min(nearD, nearG) > 90) {
+                                tunerRafRef.current = requestAnimationFrame(update);
+                                return;
+                            }
+
                             const prevF = tunerSmoothFreqRef.current || pitchHz;
-                            const smoothF = prevF * 0.6 + pitchHz * 0.4;
+                            const smoothF = prevF * 0.55 + pitchHz * 0.45;
                             tunerSmoothFreqRef.current = smoothF;
 
                             const prevC = tunerSmoothCentsRef.current;
-                            const smoothed = prevC * 0.75 + cents * 0.25;
+                            const smoothed = prevC * 0.65 + cents * 0.35;
                             tunerSmoothCentsRef.current = smoothed;
 
                             const abs = Math.abs(smoothed);
                             const tip = abs <= 5 ? 'Тұрақты!' : (smoothed > 0 ? 'Босатыңыз!' : 'Тартыңыз!');
                             paintNeedle(true, smoothed);
 
-                            // Throttle React labels; needle is painted above every frame.
-                            if (now - tunerLastUiRef.current > 50) {
+                            if (now - tunerLastUiRef.current > 40) {
                                 tunerLastUiRef.current = now;
                                 setTunerHearing(true);
                                 setTunerFreq(Math.round(smoothF * 10) / 10);
@@ -2734,8 +2763,9 @@
                                 setTunerNote(noteLabelFromMidi(midiFromHz(targetHz)));
                                 setTunerStatus(tip);
                             }
-                        } else if (now - tunerLastHeardRef.current > 450) {
-                            tunerSmoothCentsRef.current *= 0.7;
+                        } else if (now - tunerLastHeardRef.current > 400) {
+                            tunerFreqHistRef.current = [];
+                            tunerSmoothCentsRef.current *= 0.65;
                             tunerSmoothFreqRef.current = 0;
                             paintNeedle(false, 0);
                             if (now - tunerLastUiRef.current > 80) {
@@ -2783,6 +2813,7 @@
                 tunerSmoothCentsRef.current = 0;
                 tunerSmoothFreqRef.current = 0;
                 tunerLastHeardRef.current = 0;
+                tunerFreqHistRef.current = [];
             };
 
             // GuitarTuna-style: do NOT auto-start mic (needs a tap on iOS).
