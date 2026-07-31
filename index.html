@@ -2364,6 +2364,10 @@
                 'CG': { d: 130.81, g: 196.00, label: 'Теріс бұрау' },
                 'AD': { d: 110.00, g: 146.83, label: 'Ля бұрауы' }
             };
+            // Оң бұрау: ҮСТІ=D, АСТЫ=G | Теріс бұрау: ҮСТІ=G, АСТЫ=D
+            const ustiKeyForTuning = (tun) => (tun === 'CG' ? 'G' : 'D');
+            const astyKeyForTuning = (tun) => (tun === 'CG' ? 'D' : 'G');
+
             const activeTargetHz = tunings[tuning][selectedString.toLowerCase()];
 
             const playNoteSoundRef = useRef(() => {});
@@ -3396,17 +3400,18 @@
 
                                 <div className="gt-board">
                                     <button
-                                        className={`gt-string-pill usti ${selectedString === 'D' ? 'active' : ''} ${selectedString === 'D' && inTune ? 'in-tune-glow' : ''}`}
+                                        className={`gt-string-pill usti ${selectedString === ustiKeyForTuning(tuning) ? 'active' : ''} ${selectedString === ustiKeyForTuning(tuning) && inTune ? 'in-tune-glow' : ''}`}
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            setSelectedString('D');
+                                            const k = ustiKeyForTuning(tuning);
+                                            setSelectedString(k);
                                             setTunerMode('string');
-                                            setTunerTargetHz(tMap.d);
+                                            setTunerTargetHz(tMap[k.toLowerCase()]);
                                             unlockAudioEngine();
-                                            playSynth(tMap.d);
+                                            playSynth(tMap[k.toLowerCase()]);
                                         }}
-                                        title={`ҮСТІ · D · ${tMap.d.toFixed(1)} Hz`}
-                                    >ҮСТІ · D</button>
+                                        title={`ҮСТІ · ${ustiKeyForTuning(tuning)} · ${tMap[ustiKeyForTuning(tuning).toLowerCase()].toFixed(1)} Hz`}
+                                    >{`ҮСТІ · ${ustiKeyForTuning(tuning)}`}</button>
 
                                     <div className="gt-dombyra-photo-wrap">
                                         <img
@@ -3415,37 +3420,44 @@
                                             alt="Домбыра құлақ"
                                             draggable={false}
                                         />
-                                        {selectedString === 'D' && <span className="gt-string-glow usti" />}
-                                        {selectedString === 'G' && <span className="gt-string-glow asty" />}
+                                        {selectedString === ustiKeyForTuning(tuning) && <span className="gt-string-glow usti" />}
+                                        {selectedString === astyKeyForTuning(tuning) && <span className="gt-string-glow asty" />}
                                     </div>
 
                                     <button
-                                        className={`gt-string-pill asty ${selectedString === 'G' ? 'active' : ''} ${selectedString === 'G' && inTune ? 'in-tune-glow' : ''}`}
+                                        className={`gt-string-pill asty ${selectedString === astyKeyForTuning(tuning) ? 'active' : ''} ${selectedString === astyKeyForTuning(tuning) && inTune ? 'in-tune-glow' : ''}`}
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            setSelectedString('G');
+                                            const k = astyKeyForTuning(tuning);
+                                            setSelectedString(k);
                                             setTunerMode('string');
-                                            setTunerTargetHz(tMap.g);
+                                            setTunerTargetHz(tMap[k.toLowerCase()]);
                                             unlockAudioEngine();
-                                            playSynth(tMap.g);
+                                            playSynth(tMap[k.toLowerCase()]);
                                         }}
-                                        title={`АСТЫ · G · ${tMap.g.toFixed(1)} Hz`}
-                                    >АСТЫ · G</button>
+                                        title={`АСТЫ · ${astyKeyForTuning(tuning)} · ${tMap[astyKeyForTuning(tuning).toLowerCase()].toFixed(1)} Hz`}
+                                    >{`АСТЫ · ${astyKeyForTuning(tuning)}`}</button>
                                 </div>
 
                                 <div className="gt-burau-bar" onClick={(e) => e.stopPropagation()}>
                                     <button
                                         className={`gt-burau-btn ${tuning === 'DG' ? 'active' : ''}`}
                                         onClick={() => {
+                                            const side = selectedString === astyKeyForTuning(tuning) ? 'asty' : 'usti';
+                                            const next = side === 'usti' ? 'D' : 'G';
                                             setTuning('DG');
-                                            setTunerTargetHz(tunings.DG[selectedString.toLowerCase()]);
+                                            setSelectedString(next);
+                                            setTunerTargetHz(tunings.DG[next.toLowerCase()]);
                                         }}
                                     >Оң бұрау</button>
                                     <button
                                         className={`gt-burau-btn ${tuning === 'CG' ? 'active' : ''}`}
                                         onClick={() => {
+                                            const side = selectedString === astyKeyForTuning(tuning) ? 'asty' : 'usti';
+                                            const next = side === 'usti' ? 'G' : 'D';
                                             setTuning('CG');
-                                            setTunerTargetHz(tunings.CG[selectedString.toLowerCase()]);
+                                            setSelectedString(next);
+                                            setTunerTargetHz(tunings.CG[next.toLowerCase()]);
                                         }}
                                     >Теріс бұрау</button>
                                 </div>
