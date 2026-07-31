@@ -1241,8 +1241,7 @@
             width: 100%;
             height: 280px;
             background: transparent;
-            overflow-x: auto;
-            overflow-y: hidden;
+            overflow: hidden;
             position: relative;
             cursor: grab;
             border-radius: 12px;
@@ -1261,7 +1260,10 @@
             background-image:
                 linear-gradient(90deg, rgba(255, 255, 255, 0.01) 1px, transparent 1px);
             background-size: 60px 100%;
-            position: relative;
+            position: absolute;
+            top: 0;
+            left: 0;
+            will-change: transform;
         }
 
         @media (min-width: 768px) {
@@ -1358,11 +1360,17 @@
             position: absolute;
             top: 0;
             bottom: 0;
+            left: 72px;
             width: 2px;
             background: #fff;
             box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
             z-index: 15;
             pointer-events: none;
+        }
+
+        .timeline-viewport .string-label {
+            z-index: 16;
+            left: 8px;
         }
 
         /* ===== GuitarTuna exact layout (headstock + vertical needle) ===== */
@@ -2403,6 +2411,7 @@
             useEffect(() => { tunerModeRef.current = tunerMode; }, [tunerMode]);
 
             const PIXELS_PER_SECOND = 160;
+            const PLAYHEAD_X = 72;
             const G_STRING_Y = 100;
             const D_STRING_Y = 220;
 
@@ -2415,6 +2424,41 @@
             const astyKeyForTuning = (_tun) => 'G';
 
             const activeTargetHz = tunings[tuning][selectedString.toLowerCase()];
+
+            const thinSequenceForComfort = (seq, minGap = 0.34) => {
+                if (!seq || !seq.length) return [];
+                const ordered = seq.slice().sort((a, b) => Number(a.t) - Number(b.t));
+                const score = (n) => Number(n.dur || 0) + (n.s === 'G' ? 12 : 0);
+                const sparse = [];
+                for (const n of ordered) {
+                    if (!sparse.length) { sparse.push(n); continue; }
+                    const prev = sparse[sparse.length - 1];
+                    if (Number(n.t) - Number(prev.t) >= minGap) sparse.push(n);
+                    else if (score(n) > score(prev)) sparse[sparse.length - 1] = n;
+                }
+                const maxInWin = 2;
+                const out = [];
+                for (const n of sparse) {
+                    const t0 = Number(n.t);
+                    const recent = out.filter((x) => t0 - Number(x.t) <= 1);
+                    if (recent.length < maxInWin) {
+                        out.push(n);
+                        continue;
+                    }
+                    let weakest = recent[0];
+                    for (const x of recent) {
+                        if (score(x) < score(weakest)) weakest = x;
+                    }
+                    if (score(n) > score(weakest)) {
+                        const idx = out.indexOf(weakest);
+                        if (idx >= 0) out.splice(idx, 1);
+                        out.push(n);
+                    }
+                }
+                return out;
+            };
+
+
 
             const playNoteSoundRef = useRef(() => {});
             const uiTimeSyncRef = useRef(0);
@@ -2995,18 +3039,15 @@
                 lastTickTimeRef.current = performance.now();
 
                 if (newPlaying) {
-                    // Unlock Web Audio in THIS click, before rAF tries to synth.
+                    // Unlock Web Audio for note tones. Do NOT start the bottom <audio> player.
                     unlockAudioEngine();
                     lastPlayedTimeRef.current = currentTimeRef.current - 0.001;
                     if (audioRef.current) {
-                        // Duck the song a bit so note tones stay audible on top.
-                        audioRef.current.volume = 0.55;
-                        audioRef.current.currentTime = currentTimeRef.current;
-                        audioRef.current.play().catch((e) => console.warn('audio play error:', e));
+                        try {
+                            audioRef.current.pause();
+                            audioRef.current.volume = 1;
+                        } catch (_) {}
                     }
-                } else if (audioRef.current) {
-                    audioRef.current.pause();
-                    audioRef.current.volume = 1;
                 }
             };
 
@@ -3016,16 +3057,14 @@
                 if (isPlayingRef.current) {
                     const audioEl = audioRef.current;
                     let nextTime;
-                    // Prefer the real media clock so note attacks stay on the song.
-                    if (audioEl && !audioEl.paused && !audioEl.ended && Number.isFinite(audioEl.currentTime)) {
-                        nextTime = audioEl.currentTime;
-                    } else {
-                        const delta = (now - lastTickTimeRef.current) / 1000 * playbackSpeedRef.current;
-                        nextTime = currentTimeRef.current + Math.max(0, delta);
-                    }
-                    const dur = audioDurationRef.current;
+                    // Timeline play uses its own clock (not the bottom media player).
+                    const delta = (now - lastTickTimeRef.current) / 1000 * playbackSpeedRef.current;
+                    nextTime = currentTimeRef.current + Math.max(0, delta);
+                    const seq = sequenceRef.current || [];
+                    const lastT = seq.length ? Number(seq[seq.length - 1].t) + 1.5 : 0;
+                    const dur = audioDurationRef.current > 0 ? audioDurationRef.current : lastT;
 
-                    if ((dur > 0 && nextTime >= dur) || (audioEl && audioEl.ended)) {
+                    if (dur > 0 && nextTime >= dur) {
                         setIsPlaying(false);
                         setIsSynthMode(false);
                         isPlayingRef.current = false;
@@ -3108,7 +3147,7 @@
                     }
                     const data = await res.json();
                     console.log('Received sequence:', data.sequence?.length, 'notes');
-                    setSequence(data.sequence || []);
+                    setSequence(thinSequenceForComfort(data.sequence || []));
                     setAudioDuration(data.duration || 0);
 
                     if (data.sequence && data.sequence.length > 0) {
@@ -3757,26 +3796,30 @@
                                 </button>
                             )}
                         </div>
-                        <div className="timeline-viewport" ref={timelineRef}>
-                            <div className="timeline-content" style={{ width: Math.max(600, audioDuration * PIXELS_PER_SECOND) }} onClick={(e) => {
+                        <div className="timeline-viewport" ref={timelineRef} onClick={(e) => {
                                 if (!timelineRef.current) return;
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                const offsetX = e.clientX - rect.left + timelineRef.current.scrollLeft;
-                                const newTime = Math.min(audioDuration, Math.max(0, offsetX / PIXELS_PER_SECOND));
+                                const rect = timelineRef.current.getBoundingClientRect();
+                                const newTime = (e.clientX - rect.left - PLAYHEAD_X) / PIXELS_PER_SECOND + currentTimeRef.current;
+                                const clamped = Math.min(audioDuration || 1e9, Math.max(0, newTime));
                                 if (audioRef.current) {
-                                    audioRef.current.currentTime = newTime;
+                                    try { audioRef.current.currentTime = clamped; } catch (_) {}
                                 }
-                                currentTimeRef.current = newTime;
-                                setCurrentTime(newTime);
-                                lastPlayedTimeRef.current = newTime;
+                                currentTimeRef.current = clamped;
+                                setCurrentTime(clamped);
+                                lastPlayedTimeRef.current = clamped;
                             }}>
-                                <div className="playhead" style={{ left: currentTime * PIXELS_PER_SECOND }}></div>
-
+                            <div className="playhead" />
+                            <div className="string-label" style={{ top: G_STRING_Y }}>Үстіңгі ішек</div>
+                            <div className="string-label" style={{ top: D_STRING_Y }}>Астыңғы ішек</div>
+                            <div
+                                className="timeline-content"
+                                style={{
+                                    width: Math.max(600, (audioDuration || 30) * PIXELS_PER_SECOND + PLAYHEAD_X + 200),
+                                    transform: `translate3d(${PLAYHEAD_X - currentTime * PIXELS_PER_SECOND}px, 0, 0)`
+                                }}
+                            >
                                 <div className="string-line" style={{ top: G_STRING_Y }}></div>
-                                <div className="string-label" style={{ top: G_STRING_Y }}>Үстіңгі ішек</div>
-
                                 <div className="string-line" style={{ top: D_STRING_Y }}></div>
-                                <div className="string-label" style={{ top: D_STRING_Y }}>Астыңғы ішек</div>
 
                                 {sequence.map((n, i) => (
                                     <div key={i} className={`note-block ${n.s === 'G' ? 'string-g' : 'string-d'} ${currentTime >= n.t && currentTime <= n.t + (n.dur / 1000) ? 'active' : ''}`}
