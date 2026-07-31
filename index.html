@@ -2425,34 +2425,27 @@
 
             const activeTargetHz = tunings[tuning][selectedString.toLowerCase()];
 
-            const thinSequenceForComfort = (seq, minGap = 0.34) => {
+            // Light client cleanup only (backend already balances density).
+            // Keep pitch changes; collapse only same-pitch spam closer than ~140ms.
+            const thinSequenceForComfort = (seq) => {
                 if (!seq || !seq.length) return [];
                 const ordered = seq.slice().sort((a, b) => Number(a.t) - Number(b.t));
-                const score = (n) => Number(n.dur || 0) + (n.s === 'G' ? 12 : 0);
-                const sparse = [];
-                for (const n of ordered) {
-                    if (!sparse.length) { sparse.push(n); continue; }
-                    const prev = sparse[sparse.length - 1];
-                    if (Number(n.t) - Number(prev.t) >= minGap) sparse.push(n);
-                    else if (score(n) > score(prev)) sparse[sparse.length - 1] = n;
-                }
-                const maxInWin = 2;
+                const midiOf = (n) => Math.round(Number(n.midi || 0));
+                const score = (n) => Number(n.dur || 0) + (n.s === 'G' ? 18 : 0);
                 const out = [];
-                for (const n of sparse) {
-                    const t0 = Number(n.t);
-                    const recent = out.filter((x) => t0 - Number(x.t) <= 1);
-                    if (recent.length < maxInWin) {
+                for (const n of ordered) {
+                    if (!out.length) { out.push(n); continue; }
+                    const prev = out[out.length - 1];
+                    const gap = Number(n.t) - Number(prev.t);
+                    const same = midiOf(n) === midiOf(prev);
+                    if (gap >= 0.14) {
                         out.push(n);
-                        continue;
-                    }
-                    let weakest = recent[0];
-                    for (const x of recent) {
-                        if (score(x) < score(weakest)) weakest = x;
-                    }
-                    if (score(n) > score(weakest)) {
-                        const idx = out.indexOf(weakest);
-                        if (idx >= 0) out.splice(idx, 1);
+                    } else if (same) {
+                        if (score(n) > score(prev)) out[out.length - 1] = n;
+                    } else if (gap >= 0.09) {
                         out.push(n);
+                    } else if (score(n) > score(prev)) {
+                        out[out.length - 1] = n;
                     }
                 }
                 return out;
