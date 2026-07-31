@@ -2408,12 +2408,11 @@
 
             const tunings = {
                 'DG': { d: 146.83, g: 196.00, label: 'Оң бұрау' },
-                'CG': { d: 130.81, g: 196.00, label: 'Теріс бұрау' },
                 'AD': { d: 110.00, g: 146.83, label: 'Ля бұрауы' }
             };
-            // Оң бұрау: ҮСТІ=D, АСТЫ=G | Теріс бұрау: ҮСТІ=G, АСТЫ=D
-            const ustiKeyForTuning = (tun) => (tun === 'CG' ? 'G' : 'D');
-            const astyKeyForTuning = (tun) => (tun === 'CG' ? 'D' : 'G');
+            // Оң бұрау: ҮСТІ=D, АСТЫ=G
+            const ustiKeyForTuning = (_tun) => 'D';
+            const astyKeyForTuning = (_tun) => 'G';
 
             const activeTargetHz = tunings[tuning][selectedString.toLowerCase()];
 
@@ -3613,30 +3612,6 @@
                                     >Екі құлақ теңшелді! ✓ · дыбыс</div>
                                 )}
 
-                                <div className="gt-burau-bar" onClick={(e) => e.stopPropagation()}>
-                                    <button
-                                        className={`gt-burau-btn ${tuning === 'DG' ? 'active' : ''}`}
-                                        onClick={() => {
-                                            const side = selectedString === astyKeyForTuning(tuning) ? 'asty' : 'usti';
-                                            const next = side === 'usti' ? 'D' : 'G';
-                                            resetTunedProgress();
-                                            setTuning('DG');
-                                            setSelectedString(next);
-                                            setTunerTargetHz(tunings.DG[next.toLowerCase()]);
-                                        }}
-                                    >Оң бұрау</button>
-                                    <button
-                                        className={`gt-burau-btn ${tuning === 'CG' ? 'active' : ''}`}
-                                        onClick={() => {
-                                            const side = selectedString === astyKeyForTuning(tuning) ? 'asty' : 'usti';
-                                            const next = side === 'usti' ? 'G' : 'D';
-                                            resetTunedProgress();
-                                            setTuning('CG');
-                                            setSelectedString(next);
-                                            setTunerTargetHz(tunings.CG[next.toLowerCase()]);
-                                        }}
-                                    >Теріс бұрау</button>
-                                </div>
                             </div>
                         );
                     })()}
