@@ -2240,13 +2240,13 @@
             const [audioDuration, setAudioDuration] = useState(0);
             const [isRecording, setIsRecording] = useState(false);
             const [tunerActive, setTunerActive] = useState(false);
-            const [selectedString, setSelectedString] = useState('G');
+            const [selectedString, setSelectedString] = useState('D');
             const [tunerFreq, setTunerFreq] = useState(0);
             const [tunerCents, setTunerCents] = useState(0);
             const [tunerNote, setTunerNote] = useState('—');
             const [tunerStatus, setTunerStatus] = useState('Микрофонды күтуде');
             const [tunerMode, setTunerMode] = useState('auto'); // auto | string
-            const [tunerTargetHz, setTunerTargetHz] = useState(196);
+            const [tunerTargetHz, setTunerTargetHz] = useState(146.83);
             const [tunerHearing, setTunerHearing] = useState(false);
             const tunerStreamRef = useRef(null);
             const tunerSourceRef = useRef(null);
@@ -2261,9 +2261,9 @@
             const tunerSmoothFreqRef = useRef(0);
             const tunerLastHeardRef = useRef(0);
             const tunerLastUiRef = useRef(0);
-            const tunerStringVotesRef = useRef({ key: 'G', n: 0 });
+            const tunerStringVotesRef = useRef({ key: 'D', n: 0 });
             const tunerMeterRef = useRef(null);
-            const selectedStringRef = useRef('G');
+            const selectedStringRef = useRef('D');
             const tuningRef = useRef(tuning);
             const [recordingTime, setRecordingTime] = useState(0);
             const [history, setHistory] = useState(() => JSON.parse(localStorage.getItem('dombyra_history') || '[]'));
@@ -2584,7 +2584,7 @@
                 return s[Math.floor(s.length / 2)];
             };
 
-            // Map detected pitch → open string (ҮСТІ=G, АСТЫ=D/C), fix octave errors.
+            // Map detected pitch → open string (ҮСТІ=D/C, АСТЫ=G), fix octave errors.
             const resolveAgainstStrings = (rawHz, tMap, preferKey) => {
                 const targets = [
                     { key: 'D', hz: tMap.d },
@@ -3396,16 +3396,16 @@
 
                                 <div className="gt-board">
                                     <button
-                                        className={`gt-string-pill usti ${selectedString === 'G' ? 'active' : ''} ${selectedString === 'G' && inTune ? 'in-tune-glow' : ''}`}
+                                        className={`gt-string-pill usti ${selectedString === 'D' ? 'active' : ''} ${selectedString === 'D' && inTune ? 'in-tune-glow' : ''}`}
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            setSelectedString('G');
+                                            setSelectedString('D');
                                             setTunerMode('string');
-                                            setTunerTargetHz(tMap.g);
+                                            setTunerTargetHz(tMap.d);
                                             unlockAudioEngine();
-                                            playSynth(tMap.g);
+                                            playSynth(tMap.d);
                                         }}
-                                        title={`ҮСТІ · G · ${tMap.g.toFixed(1)} Hz`}
+                                        title={`ҮСТІ · D · ${tMap.d.toFixed(1)} Hz`}
                                     >ҮСТІ</button>
 
                                     <div className="gt-dombyra-photo-wrap">
@@ -3415,21 +3415,21 @@
                                             alt="Домбыра құлақ"
                                             draggable={false}
                                         />
-                                        {selectedString === 'G' && <span className="gt-string-glow usti" />}
-                                        {selectedString === 'D' && <span className="gt-string-glow asty" />}
+                                        {selectedString === 'D' && <span className="gt-string-glow usti" />}
+                                        {selectedString === 'G' && <span className="gt-string-glow asty" />}
                                     </div>
 
                                     <button
-                                        className={`gt-string-pill asty ${selectedString === 'D' ? 'active' : ''} ${selectedString === 'D' && inTune ? 'in-tune-glow' : ''}`}
+                                        className={`gt-string-pill asty ${selectedString === 'G' ? 'active' : ''} ${selectedString === 'G' && inTune ? 'in-tune-glow' : ''}`}
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            setSelectedString('D');
+                                            setSelectedString('G');
                                             setTunerMode('string');
-                                            setTunerTargetHz(tMap.d);
+                                            setTunerTargetHz(tMap.g);
                                             unlockAudioEngine();
-                                            playSynth(tMap.d);
+                                            playSynth(tMap.g);
                                         }}
-                                        title={`АСТЫ · D · ${tMap.d.toFixed(1)} Hz`}
+                                        title={`АСТЫ · G · ${tMap.g.toFixed(1)} Hz`}
                                     >АСТЫ</button>
                                 </div>
 
